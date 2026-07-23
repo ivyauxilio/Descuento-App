@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MerchantController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -75,6 +76,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Additional merchant routes
         Route::post('merchants/bulk-delete', [MerchantController::class, 'bulkDelete'])->name('merchants.bulk-delete');
         Route::put('merchants/{merchant}/status', [MerchantController::class, 'updateStatus'])->name('merchants.update-status');
+    
+            // User Management
+        Route::resource('users', UserController::class);
+        Route::post('users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulk-delete');
+        Route::put('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.update-status');
+        Route::put('users/{user}/toggle-verification', [UserController::class, 'toggleVerification'])->name('users.toggle-verification');
+    
     });
 
 
