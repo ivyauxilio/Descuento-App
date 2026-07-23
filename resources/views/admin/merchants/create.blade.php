@@ -58,7 +58,6 @@
                             @error('owner_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">Select the user who owns this merchant account</small>
                         </div>
 
                         <!-- Email -->
@@ -71,7 +70,6 @@
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">This will be the primary contact email</small>
                         </div>
 
                         <!-- Business Name -->
@@ -95,7 +93,6 @@
                             @error('branch_name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">Optional: Specify branch if multiple locations</small>
                         </div>
 
                         <!-- Category and Province -->
@@ -216,10 +213,4 @@
             </div>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Auto-generate slug or validation can be added here
-        });
-    </script>
 @endsection

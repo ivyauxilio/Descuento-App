@@ -5,11 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Admin Panel') - {{ config('app.name') }}</title>
+    <title>@yield('title', 'Merchant Panel') - {{ config('app.name') }}</title>
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -84,51 +82,6 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
         }
-
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-card .stat-icon {
-            font-size: 2rem;
-            opacity: 0.3;
-        }
-
-        .stat-card .stat-number {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin: 5px 0;
-        }
-
-        .stat-card .stat-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-
-        .card {
-            border: none;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .card-header {
-            background: white;
-            border-bottom: 1px solid #e9ecef;
-            padding: 15px 20px;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 200px;
-            }
-        }
     </style>
 
     @stack('styles')
@@ -140,38 +93,25 @@
         <div class="sidebar">
             <div class="brand">
                 <h4>{{ config('app.name') }}</h4>
-                <small>Admin Panel</small>
+                <small>Merchant Panel</small>
             </div>
 
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a href="{{ route('admin.dashboard') }}"
-                        class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    <a href="{{ route('merchant.dashboard') }}"
+                        class="nav-link {{ request()->routeIs('merchant.dashboard') ? 'active' : '' }}">
                         <i class="fas fa-chart-line"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.merchants.index') }}"
-                        class="nav-link {{ request()->routeIs('admin.merchants.*') ? 'active' : '' }}">
-                        <i class="fas fa-box"></i> Merchants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.users.index') }}"
-                        class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-                        <i class="fas fa-users"></i> Users
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.menu-items.index') }}"
-                        class="nav-link {{ request()->routeIs('admin.menu-items.*') ? 'active' : '' }}">
-                        <i class="fas fa-shopping-cart"></i> Menu List
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.promotions.index') }}"
-                        class="nav-link {{ request()->routeIs('admin.promotions.*') ? 'active' : '' }}">
+                    <a href="{{ route('merchant.promotions.index') }}"
+                        class="nav-link {{ request()->routeIs('merchant.promotions.*') ? 'active' : '' }}">
                         <i class="fas fa-tags"></i> Promotions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-utensils"></i> Menu Items
                     </a>
                 </li>
                 <li class="nav-item">
@@ -181,16 +121,11 @@
                 </li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="fas fa-box"></i> Products
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
                         <i class="fas fa-cog"></i> Settings
                     </a>
                 </li>
                 <li class="nav-item mt-4">
-                    <form method="POST" action="{{ route('admin.logout') }}">
+                    <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="btn btn-danger w-100 mx-2"
                             style="width: calc(100% - 30px) !important;">
@@ -203,25 +138,21 @@
 
         <!-- Content -->
         <div class="content">
-            <!-- Top Navbar -->
             <div class="navbar-custom d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">@yield('title', 'Dashboard')</h5>
                 <div>
                     <span class="text-muted">
                         <i class="fas fa-user-circle"></i>
-                        {{ Auth::user()->full_name ?? 'Admin' }}
+                        {{ Auth::user()->firstname }} {{ Auth::user()->lastname }}
                     </span>
                 </div>
             </div>
 
-            <!-- Page Content -->
             @yield('content')
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     @stack('scripts')
 </body>
 

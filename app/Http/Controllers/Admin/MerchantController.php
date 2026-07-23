@@ -22,12 +22,23 @@ class MerchantController extends Controller
 
         // Search filter
         if ($request->filled('search')) {
-            $query->search($request->search);
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('business_name', 'like', "%{$search}%")
+                  ->orWhere('branch_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('city', 'like', "%{$search}%");
+            });
         }
 
         // Status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        // Category filter
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
         }
 
         // Sort
@@ -37,8 +48,9 @@ class MerchantController extends Controller
 
         $merchants = $query->paginate(15);
         $statuses = ['pending', 'approved', 'active', 'rejected', 'suspended'];
+        $categories = Category::orderBy('name')->get();
 
-        return view('admin.merchants.index', compact('merchants', 'statuses'));
+        return view('admin.merchants.index', compact('merchants', 'statuses', 'categories'));
     }
 
     /**
@@ -80,7 +92,7 @@ class MerchantController extends Controller
                 'street_address' => $request->street_address,
                 'city' => $request->city,
                 'status' => $request->status,
-                'approved_by' => $request->status === 'approved' || $request->status === 'active' 
+                'approved_by' => in_array($request->status, ['approved', 'active']) 
                     ? auth()->id() 
                     : null,
             ]);
@@ -212,7 +224,7 @@ class MerchantController extends Controller
     public function updateStatus(Request $request, string $id)
     {
         $request->validate([
-            'status' => ['required', Rule::in(['pending', 'approved', 'active', 'rejected', 'suspended'])],
+            'status' => ['required', 'in:pending,approved,active,rejected,suspended'],
         ]);
 
         try {

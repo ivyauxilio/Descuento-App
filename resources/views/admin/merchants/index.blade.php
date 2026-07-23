@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Merchants Management')
+@section('title', 'Merchant Management')
 
 @section('content')
     <div class="container-fluid">
@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-0">Merchants</h1>
-                <p class="text-muted small">Manage all merchant accounts and their details</p>
+                <p class="text-muted small">Manage all merchant accounts</p>
             </div>
             <div>
                 <a href="{{ route('admin.merchants.create') }}" class="btn btn-primary">
@@ -23,21 +23,28 @@
                 <form method="GET" action="{{ route('admin.merchants.index') }}" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Search</label>
-                        <div class="input-group">
-                            <input type="text" name="search" class="form-control"
-                                placeholder="Business name, email, city..." value="{{ request('search') }}">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
+                        <input type="text" name="search" class="form-control"
+                            placeholder="Search by business name, email, city..." value="{{ request('search') }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Status</label>
                         <select name="status" class="form-select">
                             <option value="">All Status</option>
-                            @foreach (['pending', 'approved', 'active', 'rejected', 'suspended'] as $status)
+                            @foreach ($statuses as $status)
                                 <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
                                     {{ ucfirst($status) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Category</label>
+                        <select name="category" class="form-select">
+                            <option value="">All Categories</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->category_id }}"
+                                    {{ request('category') == $category->category_id ? 'selected' : '' }}>
+                                    {{ $category->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -47,11 +54,11 @@
                             <i class="fas fa-filter"></i> Filter
                         </button>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    {{-- <div class="col-md-2 d-flex align-items-end">
                         <a href="{{ route('admin.merchants.index') }}" class="btn btn-secondary w-100">
                             <i class="fas fa-undo"></i> Reset
                         </a>
-                    </div>
+                    </div> --}}
                     <div class="col-md-1 d-flex align-items-end">
                         <button type="button" class="btn btn-danger w-100" id="bulkDeleteBtn" onclick="confirmBulkDelete()"
                             title="Delete selected">
@@ -173,9 +180,6 @@
                                         <small>
                                             <i class="fas fa-calendar-alt"></i>
                                             {{ $merchant->created_at->format('M d, Y') }}
-                                            <br>
-                                            <i class="fas fa-clock"></i>
-                                            {{ $merchant->created_at->format('h:i A') }}
                                         </small>
                                     </td>
                                     <td>
@@ -212,7 +216,8 @@
                     </table>
                 </div>
             </div>
-            @if ($merchants->hasPages())
+            <x-pagination :paginator="$merchants" />
+            {{-- @if ($merchants->hasPages())
                 <div class="card-footer bg-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="text-muted small">
@@ -224,7 +229,7 @@
                         </div>
                     </div>
                 </div>
-            @endif
+            @endif --}}
         </div>
     </div>
 

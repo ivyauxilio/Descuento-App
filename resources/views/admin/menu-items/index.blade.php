@@ -1,18 +1,18 @@
 @extends('layouts.admin')
 
-@section('title', 'User Management')
+@section('title', 'Menu Items')
 
 @section('content')
     <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="h3 mb-0">Users</h1>
-                <p class="text-muted small">Manage all user accounts</p>
+                <h1 class="h3 mb-0">Menu Items</h1>
+                <p class="text-muted small">Manage all menu items for merchants</p>
             </div>
             <div>
-                <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Create User
+                <a href="{{ route('admin.menu-items.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Menu Item
                 </a>
             </div>
         </div>
@@ -20,19 +20,20 @@
         <!-- Filters -->
         <div class="card mb-4">
             <div class="card-body">
-                <form method="GET" action="{{ route('admin.users.index') }}" class="row g-3">
+                <form method="GET" action="{{ route('admin.menu-items.index') }}" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Search</label>
                         <input type="text" name="search" class="form-control"
-                            placeholder="Search by name, email, phone..." value="{{ request('search') }}">
+                            placeholder="Search by name, description..." value="{{ request('search') }}">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-bold">Role</label>
-                        <select name="role" class="form-select">
-                            <option value="">All Roles</option>
-                            @foreach ($roles as $role)
-                                <option value="{{ $role }}" {{ request('role') == $role ? 'selected' : '' }}>
-                                    {{ ucfirst($role) }}
+                        <label class="form-label fw-bold">Merchant</label>
+                        <select name="merchant_id" class="form-select">
+                            <option value="">All Merchants</option>
+                            @foreach ($merchants as $merchant)
+                                <option value="{{ $merchant->merchant_id }}"
+                                    {{ request('merchant_id') == $merchant->merchant_id ? 'selected' : '' }}>
+                                    {{ $merchant->business_name }}
                                 </option>
                             @endforeach
                         </select>
@@ -43,7 +44,7 @@
                             <option value="">All Status</option>
                             @foreach ($statuses as $status)
                                 <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
-                                    {{ ucfirst($status) }}
+                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
                                 </option>
                             @endforeach
                         </select>
@@ -72,16 +73,16 @@
             </div>
         @endif
 
-        <!-- Users Table -->
+        <!-- Menu Items Table -->
         <div class="card">
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold">
-                        <i class="fas fa-users"></i>
-                        {{ $users->total() }} User(s) Found
+                        <i class="fas fa-utensils"></i>
+                        {{ $menuItems->total() }} Menu Item(s) Found
                     </span>
                     <span class="text-muted small">
-                        Showing {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }}
+                        Showing {{ $menuItems->firstItem() ?? 0 }} - {{ $menuItems->lastItem() ?? 0 }}
                     </span>
                 </div>
             </div>
@@ -93,87 +94,81 @@
                                 <th width="40">
                                     <input type="checkbox" id="selectAll" class="form-check-input">
                                 </th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Role</th>
+                                <th>Item</th>
+                                <th>Merchant</th>
+                                <th>Price</th>
                                 <th>Status</th>
-                                <th>Verified</th>
                                 <th>Created</th>
-                                <th class="text-center" width="150">Actions</th>
+                                <th class="text-center" width="180">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($users as $user)
+                            @forelse($menuItems as $item)
                                 <tr>
                                     <td>
-                                        <input type="checkbox" class="form-check-input user-checkbox"
-                                            value="{{ $user->id }}">
+                                        <input type="checkbox" class="form-check-input menu-item-checkbox"
+                                            value="{{ $item->menu_item_id }}">
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-2">
-                                                <i class="fas fa-user text-primary"></i>
-                                            </div>
+                                            @if ($item->image_url)
+                                                <img src="{{ asset('storage/' . $item->image_url) }}"
+                                                    alt="{{ $item->name }}"
+                                                    style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 10px;">
+                                            @else
+                                                <div class="bg-secondary bg-opacity-10 rounded p-2 me-2">
+                                                    <i class="fas fa-utensils text-secondary"></i>
+                                                </div>
+                                            @endif
                                             <div>
-                                                <strong>{{ $user->firstname }} {{ $user->lastname }}</strong>
+                                                <strong>{{ $item->name }}</strong>
+                                                @if ($item->description)
+                                                    <br><small
+                                                        class="text-muted">{{ Str::limit($item->description, 50) }}</small>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{{ $user->email }}</td>
-                                    <td>{{ $user->phone ?? 'N/A' }}</td>
                                     <td>
-                                        <span
-                                            class="badge bg-{{ $user->role === 'admin' ? 'danger' : ($user->role === 'merchant' ? 'warning' : 'info') }}">
-                                            {{ ucfirst($user->role) }}
+                                        {{ $item->merchant->business_name ?? 'N/A' }}
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">{{ $item->getFormattedPrice() }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $item->getStatusBadgeColor() }}">
+                                            {{ $item->getStatusLabel() }}
                                         </span>
                                     </td>
                                     <td>
-                                        @include('admin.users.partials.status-badge', [
-                                            'status' => $user->status,
-                                        ])
-                                    </td>
-                                    <td>
-                                        @if ($user->email_verified_at)
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle"></i> Verified
-                                            </span>
-                                        @else
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-times-circle"></i> Unverified
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <small>{{ $user->created_at->format('M d, Y') }}</small>
+                                        <small>{{ $item->created_at->format('M d, Y') }}</small>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm w-100">
-                                            <a href="{{ route('admin.users.show', $user->id) }}"
-                                                class="btn btn-info text-white" title="View Details">
+                                            <a href="{{ route('admin.menu-items.show', $item->menu_item_id) }}"
+                                                class="btn btn-info text-white" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('admin.users.edit', $user->id) }}"
+                                            <a href="{{ route('admin.menu-items.edit', $item->menu_item_id) }}"
                                                 class="btn btn-warning text-white" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            @if ($user->id !== auth()->id())
-                                                <button type="button" class="btn btn-danger"
-                                                    onclick="deleteUser('{{ $user->id }}', '{{ addslashes($user->firstname . ' ' . $user->lastname) }}')"
-                                                    title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            @endif
+                                            <button type="button" class="btn btn-danger"
+                                                onclick="deleteMenuItem('{{ $item->menu_item_id }}', '{{ addslashes($item->name) }}')"
+                                                title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="text-center py-5">
-                                        <i class="fas fa-users-slash fa-3x text-muted mb-3 d-block"></i>
-                                        <p class="text-muted mb-0">No users found</p>
-                                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-sm mt-2">
-                                            <i class="fas fa-plus"></i> Create your first user
+                                    <td colspan="7" class="text-center py-5">
+                                        <i class="fas fa-utensils-slash fa-3x text-muted mb-3 d-block"></i>
+                                        <p class="text-muted mb-0">No menu items found</p>
+                                        <a href="{{ route('admin.menu-items.create') }}"
+                                            class="btn btn-primary btn-sm mt-2">
+                                            <i class="fas fa-plus"></i> Add your first menu item
                                         </a>
                                     </td>
                                 </tr>
@@ -182,16 +177,16 @@
                     </table>
                 </div>
             </div>
-            <x-pagination :paginator="$users" />
-            {{-- @if ($users->hasPages())
+            <x-pagination :paginator="$menuItems" />
+            {{-- @if ($menuItems->hasPages())
                 <div class="card-footer bg-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="text-muted small">
-                            Showing {{ $users->firstItem() ?? 0 }} to {{ $users->lastItem() ?? 0 }}
-                            of {{ $users->total() }} results
+                            Showing {{ $menuItems->firstItem() ?? 0 }} to {{ $menuItems->lastItem() ?? 0 }}
+                            of {{ $menuItems->total() }} results
                         </div>
                         <div>
-                            {{ $users->links() }}
+                            {{ $menuItems->links() }}
                         </div>
                     </div>
                 </div>
@@ -205,49 +200,36 @@
         @method('DELETE')
     </form>
 
-    <form id="bulkDeleteForm" method="POST" action="{{ route('admin.users.bulk-delete') }}" style="display: none;">
+    <form id="bulkDeleteForm" method="POST" action="{{ route('admin.menu-items.bulk-delete') }}" style="display: none;">
         @csrf
         <input type="hidden" name="ids" id="bulkDeleteIds">
     </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Select All checkbox
             document.getElementById('selectAll').addEventListener('change', function() {
-                document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                document.querySelectorAll('.menu-item-checkbox').forEach(checkbox => {
                     checkbox.checked = this.checked;
-                });
-            });
-
-            // Individual checkbox - update select all state
-            document.querySelectorAll('.user-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const allChecked = document.querySelectorAll('.user-checkbox:checked')
-                        .length ===
-                        document.querySelectorAll('.user-checkbox').length;
-                    document.getElementById('selectAll').checked = allChecked;
                 });
             });
         });
 
-        // Delete single user
-        function deleteUser(id, name) {
+        function deleteMenuItem(id, name) {
             if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
                 const form = document.getElementById('deleteForm');
-                form.action = `/admin/users/${id}`;
+                form.action = `/admin/menu-items/${id}`;
                 form.submit();
             }
         }
 
-        // Bulk delete
         function confirmBulkDelete() {
-            const selected = document.querySelectorAll('.user-checkbox:checked');
+            const selected = document.querySelectorAll('.menu-item-checkbox:checked');
             if (selected.length === 0) {
-                alert('Please select at least one user to delete.');
+                alert('Please select at least one menu item to delete.');
                 return;
             }
 
-            if (confirm(`Are you sure you want to delete ${selected.length} user(s)? This action cannot be undone.`)) {
+            if (confirm(`Are you sure you want to delete ${selected.length} menu item(s)?`)) {
                 const ids = Array.from(selected).map(cb => cb.value);
                 document.getElementById('bulkDeleteIds').value = JSON.stringify(ids);
                 document.getElementById('bulkDeleteForm').submit();

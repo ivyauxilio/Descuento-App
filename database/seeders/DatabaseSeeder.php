@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
         //     CategorySeeder::class,    // Create categories
         //     ProvinceSeeder::class,    // Create provinces
         //     MerchantSeeder::class,    // Create merchants
+            //  MenuItemSeeder::class,      // Create menu items first
+            // PromotionSeeder::class,     // Then promotions
         // ]);
     }
 }

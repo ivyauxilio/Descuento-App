@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('min_order_amount', 10, 2)->nullable();
             $table->integer('min_quantity')->nullable();
             $table->date('start_date');
-            $table->date('end_date');
+            $table->date('end_date')->nullable();
             $table->enum('status', ['active', 'inactive', 'expired'])->default('active');
             $table->timestamps();
 

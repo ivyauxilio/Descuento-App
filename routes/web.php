@@ -4,6 +4,11 @@ use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MerchantController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\MenuItemController;
+use App\Http\Controllers\Admin\AdminPromotionController;
+
+use App\Http\Controllers\Merchant\PromotionController;
+
 use Illuminate\Support\Facades\Route;
 
 
@@ -83,11 +88,42 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.update-status');
         Route::put('users/{user}/toggle-verification', [UserController::class, 'toggleVerification'])->name('users.toggle-verification');
     
+                // Menu Items
+        Route::resource('menu-items', MenuItemController::class);
+        Route::post('menu-items/bulk-delete', [MenuItemController::class, 'bulkDelete'])->name('menu-items.bulk-delete');
+        Route::put('menu-items/{menu_item}/status', [MenuItemController::class, 'updateStatus'])->name('menu-items.update-status');
+        
+            // Promotions
+        Route::resource('promotions', AdminPromotionController::class);
+        Route::post('promotions/bulk-delete', [AdminPromotionController::class, 'bulkDelete'])->name('promotions.bulk-delete');
+        Route::put('promotions/{promotion}/status', [AdminPromotionController::class, 'updateStatus'])->name('promotions.update-status');
+        Route::get('promotions-stats', [AdminPromotionController::class, 'getStats'])->name('promotions.stats');
+        Route::get('promotions-export', [AdminPromotionController::class, 'export'])->name('promotions.export');
     });
 
 
 });
 
+
+Route::middleware(['auth', 'role:merchant'])
+    ->prefix('merchant')
+    ->name('merchant.')
+    ->group(function () {
+        
+        // Dashboard
+        Route::get('/dashboard', function () {
+            return view('merchant.dashboard');
+        })->name('dashboard');
+
+        // Promotions
+        Route::get('/promotions', [PromotionController::class, 'index'])->name('promotions.index');
+        Route::get('/promotions/{id}', [PromotionController::class, 'show'])->name('promotions.show');
+        Route::get('/promotions-stats', [PromotionController::class, 'getStats'])->name('promotions.stats');
+        // Add create, store, edit, update, delete routes as needed
+    });
+
+
+    
 Route::get('/admin', function () {
     if (Auth::check() && Auth::user()->role === 'admin') {
         return redirect()->route('admin.dashboard');

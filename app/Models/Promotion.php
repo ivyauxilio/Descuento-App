@@ -11,6 +11,7 @@ class Promotion extends Model
 {
     use HasFactory, HasUuids;
 
+    protected $table = 'promotions';
     protected $primaryKey = 'promotion_id';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -39,6 +40,16 @@ class Promotion extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->promotion_id)) {
+                $model->promotion_id = (string) Str::uuid();
+            }
+        });
+    }
 
     // Relationships
     public function merchant()

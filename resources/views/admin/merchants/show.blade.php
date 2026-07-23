@@ -79,6 +79,17 @@
                                 ])</p>
                             </div>
                         </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-id-badge"></i> Merchant ID:</strong>
+                                <p><code>{{ $merchant->merchant_id }}</code></p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-calendar-alt"></i> Created:</strong>
+                                <p>{{ $merchant->created_at->format('M d, Y h:i A') }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -102,9 +113,6 @@
                         <p>{{ $merchant->owner->email ?? 'N/A' }}</p>
                         <strong>Role:</strong>
                         <p><span class="badge bg-info">{{ ucfirst($merchant->owner->role ?? 'N/A') }}</span></p>
-                        <a href="#" class="btn btn-outline-primary btn-sm w-100">
-                            <i class="fas fa-user"></i> View Owner Profile
-                        </a>
                     </div>
                 </div>
 
@@ -126,8 +134,6 @@
                             <p class="text-muted">Not yet approved</p>
                         @endif
 
-                        <strong>Created At:</strong>
-                        <p>{{ $merchant->created_at->format('M d, Y h:i A') }}</p>
                         <strong>Last Updated:</strong>
                         <p>{{ $merchant->updated_at->format('M d, Y h:i A') }}</p>
                     </div>
