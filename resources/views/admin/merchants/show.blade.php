@@ -10,6 +10,10 @@
                 <p class="text-muted small">{{ $merchant->business_name }}</p>
             </div>
             <div>
+                <a href="{{ route('admin.merchants.menu', $merchant->merchant_id) }}" class="btn btn-info text-white"
+                    title="View Menu">
+                    <i class="fas fa-utensils"></i> Menu
+                </a>
                 <a href="{{ route('admin.merchants.edit', $merchant->merchant_id) }}" class="btn btn-warning text-white me-2">
                     <i class="fas fa-edit"></i> Edit
                 </a>

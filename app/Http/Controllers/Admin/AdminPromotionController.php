@@ -9,6 +9,7 @@ use App\Models\Merchant;
 use App\Models\Category;        
 use App\Models\MenuItem; 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminPromotionController extends Controller
 {
@@ -76,6 +77,16 @@ class AdminPromotionController extends Controller
             }
         }
 
+        $column = DB::selectOne("
+            SHOW COLUMNS
+            FROM promotions
+            WHERE Field = 'promo_type'
+        ");
+
+        preg_match("/^enum\((.*)\)$/", $column->Type, $matches);
+
+        $promoTypes = str_getcsv($matches[1], ',', "'");
+
         // Sort
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
@@ -83,7 +94,7 @@ class AdminPromotionController extends Controller
 
         $promotions = $query->paginate(15);
         $merchants = Merchant::orderBy('business_name')->get();
-        $promoTypes = ['percentage', 'fixed', 'bogo'];
+        // $promoTypes = ['percentage', 'fixed', 'bogo'];
         $statuses = ['active', 'inactive', 'expired'];
 
         // Get statistics
@@ -126,10 +137,21 @@ class AdminPromotionController extends Controller
 
     public function create()
     {
+
+        $column = DB::selectOne("
+            SHOW COLUMNS
+            FROM promotions
+            WHERE Field = 'promo_type'
+        ");
+
+        preg_match("/^enum\((.*)\)$/", $column->Type, $matches);
+
+        $promoTypes = str_getcsv($matches[1], ',', "'");
+
         $merchants = Merchant::orderBy('business_name')->get();
         $categories = Category::orderBy('name')->get();
         $menuItems = MenuItem::with('merchant')->orderBy('name')->get();
-        $promoTypes = ['percentage', 'fixed', 'bogo'];
+        // $promoTypes = ['percentage', 'fixed', 'bogo'];
         $statuses = ['active', 'inactive', 'expired'];
 
         return view('admin.promotions.create', compact(
@@ -168,13 +190,23 @@ class AdminPromotionController extends Controller
         return view('admin.promotions.show', compact('promotion'));
     }
 
-        public function edit(string $id)
+    public function edit(string $id)
     {
+        $column = DB::selectOne("
+            SHOW COLUMNS
+            FROM promotions
+            WHERE Field = 'promo_type'
+        ");
+
+        preg_match("/^enum\((.*)\)$/", $column->Type, $matches);
+
+        $promoTypes = str_getcsv($matches[1], ',', "'");
+
         $promotion = Promotion::findOrFail($id);
         $merchants = Merchant::orderBy('business_name')->get();
         $categories = Category::orderBy('name')->get();
         $menuItems = MenuItem::with('merchant')->orderBy('name')->get();
-        $promoTypes = ['percentage', 'fixed', 'bogo'];
+        // $promoTypes = ['percentage', 'fixed', 'bogo'];
         $statuses = ['active', 'inactive', 'expired'];
 
         return view('admin.promotions.edit', compact(

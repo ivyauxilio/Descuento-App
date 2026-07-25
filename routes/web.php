@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\MerchantController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\AdminPromotionController;
+use App\Http\Controllers\Admin\AdminMenuItemController;
+// use App\Http\Controllers\Admin\AdminMerchantController;
 
 use App\Http\Controllers\Merchant\PromotionController;
 
@@ -92,6 +94,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('menu-items', MenuItemController::class);
         Route::post('menu-items/bulk-delete', [MenuItemController::class, 'bulkDelete'])->name('menu-items.bulk-delete');
         Route::put('menu-items/{menu_item}/status', [MenuItemController::class, 'updateStatus'])->name('menu-items.update-status');
+        
+        Route::get('/merchants/{merchant}/menu', [AdminMenuItemController::class, 'index'])->name('merchants.menu');
+        Route::get('/merchants/{merchant}/menu/{menu_item}', [AdminMenuItemController::class, 'show'])->name('merchants.menu.show');
         
             // Promotions
         Route::resource('promotions', AdminPromotionController::class);

@@ -56,24 +56,52 @@ class MerchantController extends Controller
     /**
      * Show the form for creating a new merchant.
      */
+    // public function create()
+    // {
+    //     $users = User::where('role', 'merchant')
+    //         ->orWhere('role', 'admin')
+    //         ->orderBy('firstname')
+    //         ->get()
+    //         ->map(function ($user) {
+    //             $user->full_name = $user->firstname . ' ' . $user->lastname . ' (' . $user->email . ')';
+    //             return $user;
+    //         });
+
+    //     $categories = Category::orderBy('name')->get();
+    //     $provinces = Province::orderBy('name')->get();
+    //     $statuses = ['pending', 'approved', 'active', 'rejected', 'suspended'];
+
+    //     return view('admin.merchants.create', compact('users', 'categories', 'provinces', 'statuses'));
+    // }
     public function create()
     {
-        $users = User::where('role', 'merchant')
-            ->orWhere('role', 'admin')
-            ->orderBy('firstname')
-            ->get()
-            ->map(function ($user) {
-                $user->full_name = $user->firstname . ' ' . $user->lastname . ' (' . $user->email . ')';
-                return $user;
-            });
+        // Get merchants with owner information (cached for 24 hours)
+        $merchants = Cache::remember('merchants_with_owners', 86400, function () {
+            return Merchant::with('owner')
+                ->where('status', 'active')
+                ->orderBy('business_name')
+                ->get()
+                ->map(function ($merchant) {
+                    return [
+                        'merchant_id' => $merchant->merchant_id,
+                        'business_name' => $merchant->business_name,
+                        'email' => $merchant->email,
+                        'owner_name' => $merchant->owner ? $merchant->owner->firstname . ' ' . $merchant->owner->lastname : null,
+                        'owner_email' => $merchant->owner ? $merchant->owner->email : null,
+                        'city' => $merchant->city,
+                    ];
+                });
+        });
 
         $categories = Category::orderBy('name')->get();
-        $provinces = Province::orderBy('name')->get();
-        $statuses = ['pending', 'approved', 'active', 'rejected', 'suspended'];
+        $menuItems = MenuItem::with('merchant')->orderBy('name')->get();
+        $promoTypes = ['percentage', 'fixed', 'bogo', 'free_gift', 'bundle', 'tiered', 'free_shipping', 'loyalty_points'];
+        $statuses = ['active', 'inactive', 'expired'];
 
-        return view('admin.merchants.create', compact('users', 'categories', 'provinces', 'statuses'));
+        return view('admin.promotions.create', compact(
+            'merchants', 'categories', 'menuItems', 'promoTypes', 'statuses'
+        ));
     }
-
     /**
      * Store a newly created merchant.
      */

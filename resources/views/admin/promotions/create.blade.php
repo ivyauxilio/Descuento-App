@@ -36,7 +36,7 @@
 
                     <div class="row">
                         <!-- Merchant -->
-                        <div class="col-md-6 mb-3">
+                        {{-- <div class="col-md-6 mb-3">
                             <label for="merchant_id" class="form-label fw-bold">Merchant <span
                                     class="text-danger">*</span></label>
                             <select name="merchant_id" id="merchant_id"
@@ -52,8 +52,49 @@
                             @error('merchant_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
+                        </div> --}}
+                        <div class="col-md-6 mb-3">
+                            <label for="merchant_search" class="form-label fw-bold">
+                                Merchant <span class="text-danger">*</span>
+                            </label>
 
+                            <!-- Search Input -->
+                            <div class="position-relative">
+                                <input type="text" id="merchant_search"
+                                    class="form-control @error('merchant_id') is-invalid @enderror"
+                                    placeholder="Type to search for a merchant..." autocomplete="off"
+                                    value="{{ old('business_name') }}">
+
+                                <!-- Loading indicator -->
+                                <div id="search_loading" class="position-absolute"
+                                    style="right: 10px; top: 50%; transform: translateY(-50%); display: none;">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+
+                                <!-- Suggestions Dropdown -->
+                                <div id="merchant_suggestions" class="dropdown-menu w-100"
+                                    style="display: none; max-height: 350px; overflow-y: auto; position: absolute; z-index: 9999;
+                                        background: white; border: 1px solid #dee2e6; border-radius: 0.375rem; 
+                                        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);">
+                                </div>
+                            </div>
+
+                            <!-- Hidden input for form submission -->
+                            <input type="hidden" name="merchant_id" id="merchant_id" value="{{ old('merchant_id') }}">
+                            <input type="hidden" name="business_name" id="business_name_hidden"
+                                value="{{ old('business_name') }}">
+
+                            @error('merchant_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Type to search by business name, owner name, or email
+                            </small>
+                        </div>
                         <!-- Title -->
                         <div class="col-md-6 mb-3">
                             <label for="title" class="form-label fw-bold">Title <span
@@ -257,4 +298,356 @@
             });
         });
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ============================================
+            // MERCHANT SEARCH AUTOCOMPLETE
+            // ============================================
+            const searchInput = document.getElementById('merchant_search');
+            const merchantIdInput = document.getElementById('merchant_id');
+            const businessNameHidden = document.getElementById('business_name_hidden');
+            const suggestionsDiv = document.getElementById('merchant_suggestions');
+            const loadingDiv = document.getElementById('search_loading');
+
+            // All merchants data (passed from controller)
+            const allMerchants = @json($merchants);
+
+            let selectedMerchantId = null;
+            let searchTimeout = null;
+            let currentResults = [];
+
+            // ============================================
+            // FILTER MERCHANTS
+            // ============================================
+            function filterMerchants(query) {
+                if (!query || query.length < 1) {
+                    return [];
+                }
+
+                const lowerQuery = query.toLowerCase();
+
+                return allMerchants.filter(merchant => {
+                    // Search by business name
+                    if (merchant.business_name && merchant.business_name.toLowerCase().includes(
+                            lowerQuery)) {
+                        return true;
+                    }
+
+                    // Search by owner name
+                    if (merchant.owner_name && merchant.owner_name.toLowerCase().includes(lowerQuery)) {
+                        return true;
+                    }
+
+                    // Search by email
+                    if (merchant.email && merchant.email.toLowerCase().includes(lowerQuery)) {
+                        return true;
+                    }
+
+                    // Search by owner email
+                    if (merchant.owner_email && merchant.owner_email.toLowerCase().includes(lowerQuery)) {
+                        return true;
+                    }
+
+                    // Search by city
+                    if (merchant.city && merchant.city.toLowerCase().includes(lowerQuery)) {
+                        return true;
+                    }
+
+                    return false;
+                });
+            }
+
+            // ============================================
+            // DISPLAY SUGGESTIONS
+            // ============================================
+            function showSuggestions(results) {
+                currentResults = results;
+
+                if (results.length === 0) {
+                    suggestionsDiv.innerHTML = `
+                <div class="px-3 py-3 text-center text-muted">
+                    <i class="fas fa-search"></i> No merchants found
+                </div>
+            `;
+                    suggestionsDiv.style.display = 'block';
+                    return;
+                }
+
+                let html = '';
+                results.forEach((merchant, index) => {
+                    const highlightedName = highlightText(merchant.business_name, searchInput.value);
+                    const highlightedOwner = merchant.owner_name ? highlightText(merchant.owner_name,
+                        searchInput.value) : '';
+
+                    html += `
+                <a href="#" class="dropdown-item merchant-item ${index === 0 ? 'active' : ''}" 
+                   data-id="${merchant.merchant_id}" 
+                   data-name="${merchant.business_name}"
+                   data-index="${index}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${highlightedName}</strong>
+                            ${merchant.owner_name ? `<br><small class="text-muted">
+                                                        <i class="fas fa-user"></i> Owner: ${highlightedOwner}
+                                                    </small>` : ''}
+                            ${merchant.email ? `<br><small class="text-muted">
+                                                        <i class="fas fa-envelope"></i> ${merchant.email}
+                                                    </small>` : ''}
+                            ${merchant.city ? `<br><small class="text-muted">
+                                                        <i class="fas fa-map-marker-alt"></i> ${merchant.city}
+                                                    </small>` : ''}
+                        </div>
+                        ${merchant.status ? `<span class="badge bg-${merchant.status === 'active' ? 'success' : 'secondary'}">
+                                                    ${merchant.status}
+                                                </span>` : ''}
+                    </div>
+                </a>
+            `;
+                });
+
+                suggestionsDiv.innerHTML = html;
+                suggestionsDiv.style.display = 'block';
+
+                // Add click event to items
+                document.querySelectorAll('.merchant-item').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const id = this.dataset.id;
+                        const name = this.dataset.name;
+                        selectMerchant(id, name);
+                    });
+
+                    // Hover effect
+                    item.addEventListener('mouseenter', function() {
+                        document.querySelectorAll('.merchant-item').forEach(i => i.classList.remove(
+                            'active'));
+                        this.classList.add('active');
+                    });
+                });
+            }
+
+            // ============================================
+            // HIGHLIGHT MATCHING TEXT
+            // ============================================
+            function highlightText(text, query) {
+                if (!text || !query) return text;
+                const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                return text.replace(regex, '<mark>$1</mark>');
+            }
+
+            // ============================================
+            // SELECT MERCHANT
+            // ============================================
+            function selectMerchant(id, name) {
+                selectedMerchantId = id;
+                merchantIdInput.value = id;
+                businessNameHidden.value = name;
+                searchInput.value = name;
+                searchInput.classList.remove('is-invalid');
+                searchInput.classList.add('is-valid');
+                suggestionsDiv.style.display = 'none';
+
+                // Trigger change event for any listeners
+                searchInput.dispatchEvent(new Event('change'));
+
+                // Update any other fields that might depend on merchant selection
+                console.log('Selected merchant:', id, name);
+            }
+
+            // ============================================
+            // CLEAR SELECTION
+            // ============================================
+            function clearSelection() {
+                selectedMerchantId = null;
+                merchantIdInput.value = '';
+                businessNameHidden.value = '';
+                searchInput.value = '';
+                searchInput.classList.remove('is-valid', 'is-invalid');
+                suggestionsDiv.style.display = 'none';
+            }
+
+            // ============================================
+            // EVENT LISTENERS
+            // ============================================
+
+            // Input handler with debounce
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
+
+                // If input is empty, clear selection and hide suggestions
+                if (!query) {
+                    // Only clear if not selected
+                    if (!selectedMerchantId) {
+                        merchantIdInput.value = '';
+                        businessNameHidden.value = '';
+                    }
+                    suggestionsDiv.style.display = 'none';
+                    searchInput.classList.remove('is-invalid');
+                    return;
+                }
+
+                // If the current value matches a selected merchant, keep it
+                if (selectedMerchantId) {
+                    const selectedMerchant = allMerchants.find(m => m.merchant_id === selectedMerchantId);
+                    if (selectedMerchant && selectedMerchant.business_name.toLowerCase() === query
+                        .toLowerCase()) {
+                        suggestionsDiv.style.display = 'none';
+                        return;
+                    }
+                }
+
+                // Show loading
+                loadingDiv.style.display = 'block';
+
+                // Debounce search
+                searchTimeout = setTimeout(() => {
+                    const results = filterMerchants(query);
+                    loadingDiv.style.display = 'none';
+
+                    if (results.length > 0) {
+                        showSuggestions(results);
+                        // Clear selected if not in results
+                        if (selectedMerchantId) {
+                            const stillExists = results.some(m => m.merchant_id ===
+                                selectedMerchantId);
+                            if (!stillExists) {
+                                clearSelection();
+                            }
+                        }
+                    } else {
+                        suggestionsDiv.innerHTML = `
+                    <div class="px-3 py-3 text-center text-muted">
+                        <i class="fas fa-search"></i> No merchants found
+                    </div>
+                `;
+                        suggestionsDiv.style.display = 'block';
+                        // Clear selection
+                        if (selectedMerchantId) {
+                            clearSelection();
+                        }
+                    }
+                }, 300);
+            });
+
+            // Keyboard navigation
+            searchInput.addEventListener('keydown', function(e) {
+                const items = document.querySelectorAll('.merchant-item');
+                if (items.length === 0) return;
+
+                let currentIndex = -1;
+                items.forEach((item, index) => {
+                    if (item.classList.contains('active')) {
+                        currentIndex = index;
+                        item.classList.remove('active');
+                    }
+                });
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const nextIndex = Math.min(currentIndex + 1, items.length - 1);
+                    items[nextIndex].classList.add('active');
+                    items[nextIndex].scrollIntoView({
+                        block: 'nearest'
+                    });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prevIndex = Math.max(currentIndex - 1, 0);
+                    items[prevIndex].classList.add('active');
+                    items[prevIndex].scrollIntoView({
+                        block: 'nearest'
+                    });
+                } else if (e.key === 'Enter') {
+                    const activeItem = document.querySelector('.merchant-item.active');
+                    if (activeItem) {
+                        e.preventDefault();
+                        activeItem.click();
+                    }
+                } else if (e.key === 'Escape') {
+                    suggestionsDiv.style.display = 'none';
+                    searchInput.blur();
+                }
+            });
+
+            // Focus handler - show suggestions if there's text
+            searchInput.addEventListener('focus', function() {
+                if (this.value.trim()) {
+                    const results = filterMerchants(this.value.trim());
+                    if (results.length > 0) {
+                        showSuggestions(results);
+                    }
+                }
+            });
+
+            // Blur handler - hide suggestions after delay
+            searchInput.addEventListener('blur', function() {
+                setTimeout(() => {
+                    suggestionsDiv.style.display = 'none';
+                }, 200);
+            });
+
+            // If there's a preselected merchant
+            @if (old('merchant_id') || (isset($promotion) && $promotion->merchant_id))
+                var merchantId = '{{ old('merchant_id', $promotion->merchant_id ?? '') }}';
+                var merchantName = '{{ old('business_name', $promotion->merchant->business_name ?? '') }}';
+                if (merchantId && merchantName) {
+                    selectMerchant(merchantId, merchantName);
+                }
+            @endif
+
+            // ============================================
+            // CLOSE DROPDOWN ON OUTSIDE CLICK
+            // ============================================
+            document.addEventListener('click', function(e) {
+                const container = document.querySelector('.col-md-6.mb-3 .position-relative');
+                if (container && !container.contains(e.target)) {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+
+            // ============================================
+            // FORM VALIDATION (Optional)
+            // ============================================
+            document.getElementById('promotionForm').addEventListener('submit', function(e) {
+                if (!merchantIdInput.value) {
+                    e.preventDefault();
+                    searchInput.classList.add('is-invalid');
+                    alert('Please select a merchant from the suggestions.');
+                    searchInput.focus();
+                }
+            });
+        });
+    </script>
+
+    <style>
+        /* Custom styles for merchant suggestions */
+        .dropdown-item.merchant-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f8f9fa;
+            cursor: pointer;
+        }
+
+        .dropdown-item.merchant-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item.merchant-item:hover,
+        .dropdown-item.merchant-item.active {
+            background-color: #f0f7ff;
+        }
+
+        .dropdown-item.merchant-item mark {
+            background-color: #ffeb3b;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+
+        .dropdown-item.merchant-item .badge {
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+    </style>
 @endsection
