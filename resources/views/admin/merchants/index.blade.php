@@ -184,6 +184,10 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm w-100">
+                                            <a href="{{ route('admin.merchants.menu', $merchant->merchant_id) }}"
+                                                class="btn btn-info text-white" title="View Menu & Inventory">
+                                                <i class="fas fa-utensils"></i> Menu
+                                            </a>
                                             <a href="{{ route('admin.merchants.show', $merchant->merchant_id) }}"
                                                 class="btn btn-info text-white" title="View Details">
                                                 <i class="fas fa-eye"></i>

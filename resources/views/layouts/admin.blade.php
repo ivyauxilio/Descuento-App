@@ -169,6 +169,24 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.inventory.index') }}"
+                        class="nav-link {{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
+                        <i class="fas fa-boxes"></i> Inventory
+                        @php
+                            $lowStockCount = App\Models\MenuItem::where(
+                                'stock_quantity',
+                                '<=',
+                                DB::raw('low_stock_threshold'),
+                            )
+                                ->where('stock_quantity', '>', 0)
+                                ->count();
+                        @endphp
+                        @if ($lowStockCount > 0)
+                            <span class="badge bg-danger ms-1">{{ $lowStockCount }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.promotions.index') }}"
                         class="nav-link {{ request()->routeIs('admin.promotions.*') ? 'active' : '' }}">
                         <i class="fas fa-tags"></i> Promotions

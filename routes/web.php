@@ -6,8 +6,10 @@ use App\Http\Controllers\Admin\MerchantController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\AdminPromotionController;
-use App\Http\Controllers\Admin\AdminMenuItemController;
+// use App\Http\Controllers\Admin\AdminMenuItemController;
 // use App\Http\Controllers\Admin\AdminMerchantController;
+use App\Http\Controllers\Admin\AdminMenuController;
+use App\Http\Controllers\Admin\AdminInventoryController;
 
 use App\Http\Controllers\Merchant\PromotionController;
 
@@ -95,15 +97,78 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('menu-items/bulk-delete', [MenuItemController::class, 'bulkDelete'])->name('menu-items.bulk-delete');
         Route::put('menu-items/{menu_item}/status', [MenuItemController::class, 'updateStatus'])->name('menu-items.update-status');
         
-        Route::get('/merchants/{merchant}/menu', [AdminMenuItemController::class, 'index'])->name('merchants.menu');
-        Route::get('/merchants/{merchant}/menu/{menu_item}', [AdminMenuItemController::class, 'show'])->name('merchants.menu.show');
+        // Route::get('/merchants/{merchant}/menu', [MenuItemController::class, 'index'])->name('merchants.menu');
+        // Route::get('/merchants/{merchant}/menu', [MenuItemController::class, 'merchantMenu'])->name('merchants.menu');
+
+        // Route::get('/merchants/{merchant}/menu/{menu_item}', [MenuItemController::class, 'show'])->name('merchants.menu.show');
+        // Route::get('/merchants/{merchant}/menu/{menu_item}', [MenuItemController::class, 'merchantMenuShow'])->name('merchants.menu.show');
         
+        // Route::get('/merchants/{merchant}/menu/create', [MenuItemController::class, 'create'])->name('merchants.menu.create');
+        // Route::get('/merchants/{merchant}/menu/{menu_item}/edit', [MenuItemController::class, 'edit'])->name('merchants.menu.edit');       
+        // Route::put('/merchants/{merchant}/menu/{menu_item}', [MenuItemController::class, 'update'])->name('merchants.menu.update');
+        // Route::delete('/merchants/{merchant}/menu/{menu_item}', [MenuItemController::class, 'destroy'])->name('merchants.menu.destroy');
+
+        // Route::post('/merchants/{merchant}/menu/{menu_item}/add-stock', [MenuItemController::class, 'merchantAddStock'])
+        // ->name('merchants.menu.add-stock');
+        // Route::post('/merchants/{merchant}/menu/{menu_item}/remove-stock', [MenuItemController::class, 'merchantRemoveStock'])
+        //     ->name('merchants.menu.remove-stock');
+        // Route::post('/merchants/{merchant}/menu/{menu_item}/adjust-stock', [MenuItemController::class, 'merchantAdjustStock'])
+        // ->name('merchants.menu.adjust-stock');
+
+        Route::prefix('merchants/{merchant}')->name('merchants.')->group(function () {
+            
+            // Menu CRUD
+            Route::get('/menu', [MenuItemController::class, 'merchantMenu'])->name('menu');
+            Route::get('/menu/create', [MenuItemController::class, 'merchantMenuCreate'])->name('menu.create');
+            Route::post('/menu', [MenuItemController::class, 'merchantMenuStore'])->name('menu.store');
+            Route::get('/menu/{menu_item}', [MenuItemController::class, 'merchantMenuShow'])->name('menu.show');
+            Route::get('/menu/{menu_item}/edit', [MenuItemController::class, 'merchantMenuEdit'])->name('menu.edit');
+            Route::put('/menu/{menu_item}', [MenuItemController::class, 'merchantMenuUpdate'])->name('menu.update');
+            Route::delete('/menu/{menu_item}', [MenuItemController::class, 'merchantMenuDestroy'])->name('menu.destroy');
+            
+            // Image management
+            Route::post('/menu/{menu_item}/update-image', [MenuItemController::class, 'merchantMenuUpdateImage'])
+                ->name('menu.update-image');
+            Route::delete('/menu/{menu_item}/remove-image', [MenuItemController::class, 'merchantMenuRemoveImage'])
+                ->name('menu.remove-image');
+            
+            // Inventory management
+            Route::post('/menu/{menu_item}/add-stock', [MenuItemController::class, 'merchantMenuAddStock'])
+                ->name('menu.add-stock');
+            Route::post('/menu/{menu_item}/remove-stock', [MenuItemController::class, 'merchantMenuRemoveStock'])
+                ->name('menu.remove-stock');
+            Route::post('/menu/{menu_item}/adjust-stock', [MenuItemController::class, 'merchantMenuAdjustStock'])
+                ->name('menu.adjust-stock');
+        });
+        
+
+
+        Route::post('menu-items/{menu_item}/update-image', [MenuItemController::class, 'updateImage'])->name('menu-items.update-image');
+        Route::delete('menu-items/{menu_item}/remove-image', [MenuItemController::class, 'removeImage'])->name('menu-items.remove-image');
+
             // Promotions
         Route::resource('promotions', AdminPromotionController::class);
         Route::post('promotions/bulk-delete', [AdminPromotionController::class, 'bulkDelete'])->name('promotions.bulk-delete');
         Route::put('promotions/{promotion}/status', [AdminPromotionController::class, 'updateStatus'])->name('promotions.update-status');
         Route::get('promotions-stats', [AdminPromotionController::class, 'getStats'])->name('promotions.stats');
         Route::get('promotions-export', [AdminPromotionController::class, 'export'])->name('promotions.export');
+    
+            // ============================================
+        // ADMIN INVENTORY ROUTES
+        // ============================================
+        // Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');
+        // Route::get('/inventory/{menu_item}', [AdminInventoryController::class, 'show'])->name('inventory.show');
+        // Route::get('/merchants/{merchant}/inventory', [AdminInventoryController::class, 'merchantInventory'])->name('merchants.inventory');
+        // Route::get('/inventory/low-stock', [AdminInventoryController::class, 'lowStock'])->name('inventory.low-stock');
+        // Route::get('/inventory/{menu_item}/transactions', [AdminInventoryController::class, 'transactions'])->name('inventory.transactions');
+
+        Route::get('/inventory/transactions/{menu_item}', [MenuItemController::class, 'merchantTransactions'])->name('inventory.transactions');
+
+        Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');
+        Route::get('/inventory/merchant/{merchant}', [AdminInventoryController::class, 'merchantInventory'])->name('inventory.merchant');
+        Route::get('/inventory/{menu_item}', [AdminInventoryController::class, 'show'])->name('inventory.show');
+        Route::get('/inventory/low-stock', [AdminInventoryController::class, 'lowStock'])->name('inventory.low-stock');
+    
     });
 
 
@@ -125,6 +190,26 @@ Route::middleware(['auth', 'role:merchant'])
         Route::get('/promotions/{id}', [PromotionController::class, 'show'])->name('promotions.show');
         Route::get('/promotions-stats', [PromotionController::class, 'getStats'])->name('promotions.stats');
         // Add create, store, edit, update, delete routes as needed
+
+        //         // Inventory routes
+        // Route::get('menu-items/inventory', [MenuItemController::class, 'inventoryIndex'])
+        //     ->name('menu-items.inventory-index');
+        // Route::get('menu-items/{menu_item}/inventory', [MenuItemController::class, 'inventoryShow'])
+        //     ->name('menu-items.inventory-show');
+        // Route::post('menu-items/{menu_item}/add-stock', [MenuItemController::class, 'addStock'])
+        //     ->name('menu-items.add-stock');
+        // Route::post('menu-items/{menu_item}/remove-stock', [MenuItemController::class, 'removeStock'])
+        //     ->name('menu-items.remove-stock');
+        // Route::post('menu-items/{menu_item}/adjust-stock', [MenuItemController::class, 'adjustStock'])
+        //     ->name('menu-items.adjust-stock');
+        // Route::get('low-stock', [MenuItemController::class, 'lowStock'])
+        //     ->name('menu-items.low-stock');
+
+                // Image management for merchant
+        Route::post('menu-items/{menu_item}/update-image', [MenuItemController::class, 'merchantUpdateImage'])
+            ->name('menu-items.update-image');
+        Route::delete('menu-items/{menu_item}/remove-image', [MenuItemController::class, 'merchantRemoveImage'])
+            ->name('menu-items.remove-image');
     });
 
 
