@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
             $table->string('image_url')->nullable();
-            $table->enum('status', ['available', 'unavailable', 'out_of_stock'])->default('available');
+            $table->enum('status', ['available', 'unavailable', 'out_of_stock'])->default('unavailable');
             $table->timestamps();
 
             $table->foreign('merchant_id')->references('merchant_id')->on('merchants')->onDelete('cascade');

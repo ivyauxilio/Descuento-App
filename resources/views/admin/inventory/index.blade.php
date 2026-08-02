@@ -141,11 +141,11 @@
                         <label class="form-label fw-bold">Category</label>
                         <select name="category" class="form-select">
                             <option value="">All Categories</option>
-                            @foreach ($categories as $key => $value)
+                            {{-- @foreach ($categories as $key => $value)
                                 <option value="{{ $key }}" {{ request('category') == $key ? 'selected' : '' }}>
                                     {{ $value }}
                                 </option>
-                            @endforeach
+                            @endforeach --}}
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end gap-2">
@@ -210,8 +210,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <a
-                                            href="{{ route('admin.inventory.merchant', $item->merchant->merchant_id ?? '') }}">
+                                        <a href="{{ route('admin.merchants.show', $item->merchant->merchant_id ?? '') }}">
                                             {{ $item->merchant->business_name ?? 'N/A' }}
                                         </a>
                                     </td>
@@ -266,7 +265,7 @@
                     </table>
                 </div>
             </div>
-            @if ($menuItems->hasPages())
+            {{-- @if ($menuItems->hasPages())
                 <div class="card-footer bg-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="text-muted small">
@@ -278,7 +277,8 @@
                         </div>
                     </div>
                 </div>
-            @endif
+            @endif --}}
+            <x-pagination :paginator="$menuItems" />
         </div>
     </div>
 @endsection

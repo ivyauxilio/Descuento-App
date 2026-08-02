@@ -102,6 +102,16 @@ class User extends Authenticatable
         return $this->role === $roles;
     }
 
+        /**
+     * Get the merchant associated with the user.
+     */
+    public function merchant()
+    {
+        // This assumes the user has a one-to-one relationship with merchant
+        return $this->hasOne(Merchant::class, 'owner_id', 'id');
+    }
+
+
     /**
      * Check if user is admin.
      *

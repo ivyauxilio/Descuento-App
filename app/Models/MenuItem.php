@@ -56,7 +56,7 @@ class MenuItem extends Model
         });
 
         static::updating(function ($model) {
-            if ($model->isDirty('stock_quantity')) {
+            if ($model->isDirty('stock_quantity') || $model->isDirty('low_stock_threshold')) {
                 $model->updateStockStatus();
             }
         });
@@ -143,6 +143,10 @@ class MenuItem extends Model
     {
         if ($this->stock_quantity <= 0) {
             $this->stock_status = 'out_of_stock';
+            
+            if ($this->status === 'available') {
+                $this->status = 'out_of_stock';
+            }
         } elseif ($this->stock_quantity <= $this->low_stock_threshold) {
             $this->stock_status = 'low_stock';
         } else {

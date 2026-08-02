@@ -324,15 +324,18 @@ class AdminPromotionController extends Controller
     /**
      * Export promotions (CSV).
      */
-    public function export(Request $request)
-    {
-        $promotions = Promotion::with(['merchant', 'freeMenuItem'])
-            ->when($request->status, function ($q) use ($request) {
-                return $q->where('status', $request->status);
-            })
-            ->get();
+public function export(Request $request)
+{
+    $promotions = Promotion::with(['merchant', 'freeMenuItem'])
+        ->when($request->status, function ($q) use ($request) {
+            return $q->where('status', $request->status);
+        })
+        ->get();
 
-        $filename = 'promotions_' . now()->format('Y-m-d') . '.csv';
+    $filename = 'promotions_' . now()->format('Y-m-d') . '.csv';
+
+    // Use response()->stream() instead of handling output directly
+    return response()->stream(function () use ($promotions) {
         $handle = fopen('php://output', 'w');
 
         // Add headers
@@ -362,12 +365,9 @@ class AdminPromotionController extends Controller
         }
 
         fclose($handle);
-
-        return response()
-            ->stream(function () use ($handle) {
-                // Output already handled
-            })
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }
+    }, 200, [
+        'Content-Type' => 'text/csv',
+        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+    ]);
+}
 }
