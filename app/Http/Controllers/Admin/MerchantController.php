@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\Province;
 use App\Models\User;
+use App\Models\MenuItem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -98,7 +100,7 @@ class MerchantController extends Controller
         $promoTypes = ['percentage', 'fixed', 'bogo', 'free_gift', 'bundle', 'tiered', 'free_shipping', 'loyalty_points'];
         $statuses = ['active', 'inactive', 'expired'];
 
-        return view('admin.promotions.create', compact(
+        return view('admin.merchants.create', compact(
             'merchants', 'categories', 'menuItems', 'promoTypes', 'statuses'
         ));
     }

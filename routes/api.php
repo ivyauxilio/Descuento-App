@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Merchant\MenuItemController;
+use App\Http\Controllers\Merchant\PromotionController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -42,5 +43,14 @@ Route::middleware('auth:api')->group(function () {
         
         // Status Management
         Route::put('menu-items/{menu_item}/status', [MenuItemController::class, 'updateStatus']);
+
+        // Promotions
+        Route::get('promotions', [PromotionController::class, 'index']);
+        Route::post('promotions', [PromotionController::class, 'store']);
+        Route::get('promotions/{promotion}', [PromotionController::class, 'show']);
+        Route::put('promotions/{promotion}', [PromotionController::class, 'update']);
+        Route::delete('promotions/{promotion}', [PromotionController::class, 'destroy']);
+        Route::put('promotions/{promotion}/status', [PromotionController::class, 'updateStatus']);
+
     });
 });

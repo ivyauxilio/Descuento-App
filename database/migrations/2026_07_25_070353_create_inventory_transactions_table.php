@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_transactions', function (Blueprint $table) {
-            $table->uuid('transaction_id')->primary();
+            $table->bigIncrements('transaction_id');
             $table->uuid('menu_item_id');
             $table->enum('type', ['stock_in', 'stock_out', 'adjustment', 'return']);
             $table->integer('quantity');

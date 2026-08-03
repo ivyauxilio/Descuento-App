@@ -42,7 +42,7 @@
                         </div>
 
                         <!-- Owner -->
-                        <div class="col-md-6 mb-3">
+                        {{-- <div class="col-md-6 mb-3">
                             <label for="owner_id" class="form-label fw-bold">Owner <span
                                     class="text-danger">*</span></label>
                             <select name="owner_id" id="owner_id"
@@ -58,7 +58,7 @@
                             @error('owner_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
+                        </div> --}}
 
                         <!-- Email -->
                         <div class="col-md-6 mb-3">
@@ -121,7 +121,7 @@
                         </div>
 
                         <!-- Province -->
-                        <div class="col-md-6 mb-3">
+                        {{-- <div class="col-md-6 mb-3">
                             <label for="province_id" class="form-label fw-bold">Province <span
                                     class="text-danger">*</span></label>
                             <select name="province_id" id="province_id"
@@ -137,7 +137,7 @@
                             @error('province_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
+                        </div> --}}
 
                         <!-- Address -->
                         <div class="col-12 mt-3">
@@ -159,8 +159,7 @@
 
                         <!-- City -->
                         <div class="col-md-6 mb-3">
-                            <label for="city" class="form-label fw-bold">City <span
-                                    class="text-danger">*</span></label>
+                            <label for="city" class="form-label fw-bold">City <span class="text-danger">*</span></label>
                             <input type="text" name="city" id="city"
                                 class="form-control @error('city') is-invalid @enderror" value="{{ old('city') }}"
                                 placeholder="City name" required>

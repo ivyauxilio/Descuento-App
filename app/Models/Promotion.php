@@ -66,6 +66,12 @@ class Promotion extends Model
                 $model->promotion_id = (string) Str::uuid();
             }
         });
+        static::updating(function ($model) {
+            // Auto-update status to expired if end_date is in the past
+            if ($model->end_date && $model->end_date < now() && $model->status !== 'expired') {
+                $model->status = 'expired';
+            }
+        });
     }
 
     // Relationships
@@ -203,6 +209,14 @@ class Promotion extends Model
             default:
                 return '';
         }
+    }
+
+        // Helper Methods
+    public function isActive(): bool
+    {
+        return $this->status === 'active' &&
+               ($this->start_date <= now()) &&
+               ($this->end_date === null || $this->end_date >= now());
     }
 
     public function getStatusBadgeColor(): string
