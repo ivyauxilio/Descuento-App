@@ -8,6 +8,8 @@ use App\Models\Promotion;
 use App\Models\Merchant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class PromotionController extends Controller
 {
@@ -94,7 +96,7 @@ class PromotionController extends Controller
     }
 
 
-        /**
+    /**
      * Store a newly created promotion.
      */
     public function store(PromotionRequest $request)
@@ -106,16 +108,104 @@ class PromotionController extends Controller
 
             $data = $request->validated();
             $data['merchant_id'] = $merchant->merchant_id;
+            
+            // Generate UUID for promotion_id
+            $data['promotion_id'] = (string) Str::uuid();
+            
+            // Generate unique QR code
+            $data['qr_code'] = $this->generateUniqueQrCode();
 
             // Set default values
-            $data['promotion_id'] = (string) Str::uuid();
             $data['status'] = $request->status ?? 'active';
+            $data['used_count'] = 0;
+            $data['usage_limit'] = $request->usage_limit ?? 100;
 
             // Set value to 0 for BOGO if not provided
             if ($data['promo_type'] === 'bogo' && !isset($data['value'])) {
                 $data['value'] = 0;
             }
 
+            // Handle tiered discount - ensure it's stored as JSON
+            if ($data['promo_type'] === 'tiered' && isset($data['tiers'])) {
+                $data['tiers'] = json_encode($data['tiers']);
+            }
+
+            // Handle is_stackable as boolean
+            if (isset($data['is_stackable'])) {
+                $data['is_stackable'] = filter_var($data['is_stackable'], FILTER_VALIDATE_BOOLEAN);
+            }
+
+            // ============================================
+            // TYPE-SPECIFIC VALIDATION & PROCESSING
+            // ============================================
+
+            // Percentage Discount
+            if ($data['promo_type'] === 'percentage') {
+                $data['value'] = $request->value;
+                $data['max_discount_amount'] = $request->max_discount_amount ?? null;
+            }
+
+            // Fixed Amount
+            if ($data['promo_type'] === 'fixed') {
+                $data['value'] = $request->value;
+            }
+
+            // BOGO (Buy One Get One)
+            if ($data['promo_type'] === 'bogo') {
+                $data['value'] = 0;
+                $data['free_menu_item_id'] = $request->free_menu_item_id;
+                $data['required_menu_item_id'] = $request->required_menu_item_id;
+            }
+
+            // Free Gift
+            if ($data['promo_type'] === 'free_gift') {
+                $data['value'] = 0;
+                $data['free_gift_product_id'] = $request->free_gift_product_id;
+            }
+
+            // Bundle Deal
+            if ($data['promo_type'] === 'bundle') {
+                $data['buy_quantity'] = $request->buy_quantity;
+                $data['get_quantity'] = $request->get_quantity;
+                $data['get_discount_percentage'] = $request->get_discount_percentage ?? 0;
+            }
+
+            // Tiered Discount
+            if ($data['promo_type'] === 'tiered') {
+                $data['value'] = 0;
+                // Tiers should already be JSON encoded
+            }
+
+            // Free Shipping
+            if ($data['promo_type'] === 'free_shipping') {
+                $data['value'] = 0;
+            }
+
+            // Loyalty Points
+            if ($data['promo_type'] === 'loyalty_points') {
+                $data['value'] = 0;
+                $data['points_multiplier'] = $request->points_multiplier ?? 1;
+            }
+
+            // Buy X Get Y
+            if ($data['promo_type'] === 'buy_x_get_y') {
+                $data['buy_quantity'] = $request->buy_quantity;
+                $data['get_quantity'] = $request->get_quantity;
+                $data['get_discount_percentage'] = $request->get_discount_percentage;
+            }
+
+            // First Purchase
+            if ($data['promo_type'] === 'first_purchase') {
+                $data['value'] = $request->value;
+            }
+
+            // Flash Sale
+            if ($data['promo_type'] === 'flash_sale') {
+                $data['value'] = $request->value;
+                $data['max_discount_amount'] = $request->max_discount_amount ?? null;
+            }
+
+            // Create the promotion
             $promotion = Promotion::create($data);
 
             DB::commit();
@@ -127,6 +217,9 @@ class PromotionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Promotion creation failed: ' . $e->getMessage());
+            Log::error('Request data: ' . json_encode($request->all()));
+            
             return response()->json([
                 'message' => 'Failed to create promotion',
                 'error' => $e->getMessage(),
@@ -177,6 +270,16 @@ class PromotionController extends Controller
                 $data['value'] = 0;
             }
 
+            // Handle tiered discount
+            if ($data['promo_type'] === 'tiered' && isset($data['tiers'])) {
+                $data['tiers'] = json_encode($data['tiers']);
+            }
+
+            // Handle is_stackable as boolean
+            if (isset($data['is_stackable'])) {
+                $data['is_stackable'] = filter_var($data['is_stackable'], FILTER_VALIDATE_BOOLEAN);
+            }
+
             $promotion->update($data);
 
             DB::commit();
@@ -188,13 +291,14 @@ class PromotionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Promotion update failed: ' . $e->getMessage());
+            
             return response()->json([
                 'message' => 'Failed to update promotion',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
-
         /**
      * Remove the specified promotion.
      */
@@ -292,6 +396,27 @@ class PromotionController extends Controller
 
         return response()->json($stats);
     }
+
+    /**
+     * Generate a unique QR code.
+     */
+    private function generateUniqueQrCode(): string
+    {
+        // $prefix = 'PROMO';
+        $timestamp = now()->timestamp;
+        $random = strtoupper(Str::random(8));
+        
+        $qrCode = $timestamp . '-' . $random;
+
+        // Ensure uniqueness
+        while (Promotion::where('qr_code', $qrCode)->exists()) {
+            $random = strtoupper(Str::random(8));
+            $qrCode = $timestamp . '-' . $random;
+        }
+
+        return $qrCode;
+    }
+
 
     private function getMerchant()
     {

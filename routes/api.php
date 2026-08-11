@@ -3,7 +3,10 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Merchant\MenuItemController;
 use App\Http\Controllers\Merchant\PromotionController;
+use App\Http\Controllers\Merchant\QRCodeController;
+use App\Http\Controllers\Merchant\MerchantController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Client\ClientPromotionController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -27,6 +30,9 @@ Route::middleware('auth:api')->group(function () {
     // MERCHANT MENU ITEMS
     // ============================================
     Route::prefix('merchant')->name('merchant.')->group(function () {
+
+        Route::get('profile', [MerchantController::class, 'profile']);
+        Route::get('stats', [MerchantController::class, 'stats']); // Add this route
 
         // Menu Items
         Route::get('menu-items', [MenuItemController::class, 'index']);
@@ -52,5 +58,14 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('promotions/{promotion}', [PromotionController::class, 'destroy']);
         Route::put('promotions/{promotion}/status', [PromotionController::class, 'updateStatus']);
 
+        // QR Code routes
+        Route::post('qr-code/verify', [QRCodeController::class, 'verify']);
+        Route::get('qr-code/{promotion}', [QRCodeController::class, 'getQrData']);
+        Route::get('qr-code-stats', [QRCodeController::class, 'getStats']);
+    });
+    
+    Route::prefix('client')->name('client.')->group(function () {
+        Route::get('/promotions', [ClientPromotionController::class, 'index']);
+        Route::get('/promotions/{id}', [ClientPromotionController::class, 'show']); // Add this route
     });
 });
