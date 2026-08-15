@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Promotion extends Model
 {
@@ -46,6 +47,8 @@ class Promotion extends Model
         'total_usage_limit',
         'priority',
         'is_stackable',
+        'poster_image',        
+        'poster_thumbnail',   
     ];
 
     protected $casts = [
@@ -335,6 +338,30 @@ class Promotion extends Model
         return true;
     }
 
+    public function isValid(): bool
+    {
+        // Check status
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        // Check date range
+        if ($this->start_date && $this->start_date > now()) {
+            return false;
+        }
+
+        if ($this->end_date && $this->end_date < now()) {
+            return false;
+        }
+
+        // Check usage limit
+        if ($this->usage_limit && $this->used_count >= $this->usage_limit) {
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Check if user can use this promotion.
      */
@@ -357,6 +384,73 @@ class Promotion extends Model
         return true;
     }
 
+        /**
+     * Check if user can redeem this promotion.
+     */
+    public function canUserRedeem($userId): bool
+    {
+        if (!$this->isValid()) {
+            return false;
+        }
+
+        // Check user usage limit
+        if ($this->usage_limit_per_user) {
+            $userUsage = QrCodeUsage::where('promotion_id', $this->promotion_id)
+                ->where('user_id', $userId)
+                ->count();
+
+            if ($userUsage >= $this->usage_limit_per_user) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function redeem($userId, $merchantId): array
+    {
+        if (!$this->canUserRedeem($userId)) {
+            return [
+                'success' => false,
+                'message' => 'This promotion is not available for redemption.',
+            ];
+        }
+
+        try {
+            // Create usage record
+            $usage = QrCodeUsage::create([
+                'usage_id' => (string) Str::uuid(),
+                'promotion_id' => $this->promotion_id,
+                'merchant_id' => $merchantId,
+                'user_id' => $userId,
+                'qr_code' => $this->qr_code,
+                'discount_applied' => $this->value,
+                'scanned_at' => now(),
+            ]);
+
+            // Update promotion stats
+            $this->increment('used_count');
+            $this->last_used_at = now();
+            $this->save();
+
+            return [
+                'success' => true,
+                'data' => [
+                    'usage_id' => $usage->usage_id,
+                    'used_count' => $this->used_count,
+                    'remaining' => $this->total_usage_limit ? $this->usage_limit - $this->used_count : null,
+                    'last_used_at' => $this->last_used_at,
+                    'redeemed_at' => $usage->scanned_at,
+                ],
+                'message' => 'Promotion redeemed successfully!',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to redeem promotion: ' . $e->getMessage(),
+            ];
+        }
+    }
     /**
      * Increment usage count.
      */
@@ -394,4 +488,25 @@ class Promotion extends Model
         return max(0, $this->usage_limit - $this->used_count);
     }
 
+        /**
+     * Get the poster image URL.
+     */
+    public function getPosterImageUrlAttribute()
+    {
+        if ($this->poster_image) {
+            return asset('storage/' . $this->poster_image);
+        }
+        return null;
+    }
+
+    /**
+     * Get the poster thumbnail URL.
+     */
+    public function getPosterThumbnailUrlAttribute()
+    {
+        if ($this->poster_thumbnail) {
+            return asset('storage/' . $this->poster_thumbnail);
+        }
+        return null;
+    }
 }

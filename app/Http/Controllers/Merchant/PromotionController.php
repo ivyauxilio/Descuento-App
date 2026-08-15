@@ -10,6 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class PromotionController extends Controller
 {
@@ -119,6 +123,14 @@ class PromotionController extends Controller
             $data['status'] = $request->status ?? 'active';
             $data['used_count'] = 0;
             $data['usage_limit'] = $request->usage_limit ?? 100;
+
+            // Handle poster image upload
+            if ($request->hasFile('poster_image')) {
+                $posterImage = $request->file('poster_image');
+                $imagePath = $this->uploadPosterImage($posterImage, $data['promotion_id']);
+                $data['poster_image'] = $imagePath['original'];
+                $data['poster_thumbnail'] = $imagePath['thumbnail'];
+            }
 
             // Set value to 0 for BOGO if not provided
             if ($data['promo_type'] === 'bogo' && !isset($data['value'])) {
@@ -279,6 +291,22 @@ class PromotionController extends Controller
             if (isset($data['is_stackable'])) {
                 $data['is_stackable'] = filter_var($data['is_stackable'], FILTER_VALIDATE_BOOLEAN);
             }
+            
+            // Handle poster image upload
+            if ($request->hasFile('poster_image')) {
+                // Delete old images
+                if ($promotion->poster_image) {
+                    Storage::disk('public')->delete($promotion->poster_image);
+                }
+                if ($promotion->poster_thumbnail) {
+                    Storage::disk('public')->delete($promotion->poster_thumbnail);
+                }
+                
+                $imagePath = $this->uploadPosterImage($request->file('poster_image'), $promotion->promotion_id);
+                $data['poster_image'] = $imagePath['original'];
+                $data['poster_thumbnail'] = $imagePath['thumbnail'];
+            }
+
 
             $promotion->update($data);
 
@@ -428,5 +456,205 @@ class PromotionController extends Controller
 
         return $merchant;
     }
+
+        /**
+     * Upload poster image and create thumbnail.
+     */
+         // private function uploadPosterImage($image, $promotionId): array
+    // {
+    //     $timestamp = now()->timestamp;
+    //     $extension = $image->getClientOriginalExtension();
+    //     $filename = "promotion-{$promotionId}-{$timestamp}.{$extension}";
+    //     $thumbnailFilename = "promotion-{$promotionId}-{$timestamp}-thumb.{$extension}";
+
+    //     // Store original image
+    //     $path = $image->storeAs('promotions/posters', $filename, 'public');
+        
+    //     // Create and store thumbnail
+    //     $imageContent = $image->get();
+    //     $thumbnail = Image::make($imageContent)->fit(300, 300)->encode($extension, 80);
+    //     Storage::disk('public')->put("promotions/posters/{$thumbnailFilename}", $thumbnail);
+
+    //     return [
+    //         'original' => "promotions/posters/{$filename}",
+    //         'thumbnail' => "promotions/posters/{$thumbnailFilename}",
+    //     ];
+    // }
+    // private function uploadPosterImage($image, $promotionId): array
+    // {
+    //     try {
+    //         $timestamp = now()->timestamp;
+    //         $extension = $image->getClientOriginalExtension();
+    //         $filename = "promotion-{$promotionId}-{$timestamp}.{$extension}";
+    //         $thumbnailFilename = "promotion-{$promotionId}-{$timestamp}-thumb.{$extension}";
+
+    //         // Store original image
+    //         $path = $image->storeAs('promotions/posters', $filename, 'public');
+            
+    //         // Create and store thumbnail - Using ImageManager without facade
+    //         $imageContent = file_get_contents($image->getRealPath());
+            
+    //         // Use ImageManager directly
+    //         $manager = new ImageManager(['driver' => 'gd']);
+    //         $thumbnail = $manager->make($imageContent)->fit(300, 300)->encode($extension, 80);
+    //         Storage::disk('public')->put("promotions/posters/{$thumbnailFilename}", $thumbnail);
+
+    //         return [
+    //             'original' => "promotions/posters/{$filename}",
+    //             'thumbnail' => "promotions/posters/{$thumbnailFilename}",
+    //         ];
+    //     } catch (\Exception $e) {
+    //         Log::error('Image upload failed: ' . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
+    /**
+     * Delete promotion poster image.
+     */
+    public function deletePoster(string $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $merchant = $this->getMerchant();
+
+            $promotion = Promotion::where('merchant_id', $merchant->merchant_id)
+                ->findOrFail($id);
+
+            if ($promotion->poster_image) {
+                Storage::disk('public')->delete($promotion->poster_image);
+            }
+            if ($promotion->poster_thumbnail) {
+                Storage::disk('public')->delete($promotion->poster_thumbnail);
+            }
+
+            $promotion->poster_image = null;
+            $promotion->poster_thumbnail = null;
+            $promotion->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Poster image deleted successfully',
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to delete poster image',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function uploadPosterImage($image, $promotionId): array
+    {
+        try {
+            $timestamp = now()->timestamp;
+            $extension = $image->getClientOriginalExtension();
+            $filename = "promotion-{$promotionId}-{$timestamp}.{$extension}";
+            $thumbnailFilename = "promotion-{$promotionId}-{$timestamp}-thumb.{$extension}";
+
+            // Store original image
+            $path = $image->storeAs('promotions/posters', $filename, 'public');
+            
+            // Create thumbnail using GD
+            $sourcePath = Storage::disk('public')->path("promotions/posters/{$filename}");
+            $thumbPath = Storage::disk('public')->path("promotions/posters/{$thumbnailFilename}");
+            
+            $this->createThumbnail($sourcePath, $thumbPath, 300, 300);
+
+            return [
+                'original' => "promotions/posters/{$filename}",
+                'thumbnail' => "promotions/posters/{$thumbnailFilename}",
+            ];
+        } catch (\Exception $e) {
+            Log::error('Image upload failed: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Create thumbnail using GD library.
+     */
+    private function createThumbnail($sourcePath, $destinationPath, $width, $height)
+    {
+        $imageInfo = getimagesize($sourcePath);
+        $sourceType = $imageInfo[2];
+        
+        // Create image resource based on type
+        switch ($sourceType) {
+            case IMAGETYPE_JPEG:
+                $sourceImage = imagecreatefromjpeg($sourcePath);
+                break;
+            case IMAGETYPE_PNG:
+                $sourceImage = imagecreatefrompng($sourcePath);
+                break;
+            case IMAGETYPE_GIF:
+                $sourceImage = imagecreatefromgif($sourcePath);
+                break;
+            case IMAGETYPE_WEBP:
+                $sourceImage = imagecreatefromwebp($sourcePath);
+                break;
+            default:
+                throw new \Exception('Unsupported image type');
+        }
+        
+        $sourceWidth = imagesx($sourceImage);
+        $sourceHeight = imagesy($sourceImage);
+        
+        // Calculate aspect ratio
+        $sourceRatio = $sourceWidth / $sourceHeight;
+        $targetRatio = $width / $height;
+        
+        if ($sourceRatio > $targetRatio) {
+            $newWidth = $sourceHeight * $targetRatio;
+            $newHeight = $sourceHeight;
+            $x = ($sourceWidth - $newWidth) / 2;
+            $y = 0;
+        } else {
+            $newWidth = $sourceWidth;
+            $newHeight = $sourceWidth / $targetRatio;
+            $x = 0;
+            $y = ($sourceHeight - $newHeight) / 2;
+        }
+        
+        // Create thumbnail
+        $thumbnail = imagecreatetruecolor($width, $height);
+        
+        // Preserve transparency for PNG and GIF
+        if ($sourceType === IMAGETYPE_PNG || $sourceType === IMAGETYPE_GIF) {
+            imagecolortransparent($thumbnail, imagecolorallocate($thumbnail, 0, 0, 0));
+            imagealphablending($thumbnail, false);
+            imagesavealpha($thumbnail, true);
+        }
+        
+        imagecopyresampled(
+            $thumbnail,
+            $sourceImage,
+            0, 0, $x, $y,
+            $width, $height, $newWidth, $newHeight
+        );
+        
+        // Save thumbnail
+        switch ($sourceType) {
+            case IMAGETYPE_JPEG:
+                imagejpeg($thumbnail, $destinationPath, 80);
+                break;
+            case IMAGETYPE_PNG:
+                imagepng($thumbnail, $destinationPath, 8);
+                break;
+            case IMAGETYPE_GIF:
+                imagegif($thumbnail, $destinationPath);
+                break;
+            case IMAGETYPE_WEBP:
+                imagewebp($thumbnail, $destinationPath, 80);
+                break;
+        }
+        
+        imagedestroy($sourceImage);
+        imagedestroy($thumbnail);
+    }
+    
 
 }

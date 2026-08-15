@@ -7,6 +7,7 @@ use App\Http\Controllers\Merchant\QRCodeController;
 use App\Http\Controllers\Merchant\MerchantController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Client\ClientPromotionController;
+use App\Http\Controllers\Merchant\QRScanController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -57,6 +58,9 @@ Route::middleware('auth:api')->group(function () {
         Route::put('promotions/{promotion}', [PromotionController::class, 'update']);
         Route::delete('promotions/{promotion}', [PromotionController::class, 'destroy']);
         Route::put('promotions/{promotion}/status', [PromotionController::class, 'updateStatus']);
+        Route::delete('promotions/{promotion}/poster', [PromotionController::class, 'deletePoster'])->name('promotions.delete-poster');
+        Route::post('/promotions/redeem', [QRScanController::class, 'redeem']);
+        // Route::post('/scan/redeem', [QRScanController::class, 'redeem']);
 
         // QR Code routes
         Route::post('qr-code/verify', [QRCodeController::class, 'verify']);

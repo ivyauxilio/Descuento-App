@@ -31,6 +31,7 @@ class PromotionRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'inactive', 'expired'])],
             'usage_limit_per_user' => 'nullable|integer|min:1',
             'total_usage_limit' => 'nullable|integer|min:1',
+            'poster_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
         ];
     }
 
@@ -56,6 +57,9 @@ class PromotionRequest extends FormRequest
             'min_order_amount.numeric' => 'Minimum order amount must be a number.',
             'usage_limit_per_user.integer' => 'Usage limit per user must be a whole number.',
             'total_usage_limit.integer' => 'Total usage limit must be a whole number.',
+            'poster_image.image' => 'The poster must be an image file.',
+            'poster_image.mimes' => 'The poster must be a JPEG, PNG, JPG, GIF, or WebP file.',
+            'poster_image.max' => 'The poster must not be larger than 5MB.',
         ];
     }
 

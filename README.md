@@ -57,3 +57,58 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+Usage Limit vs Total Usage Limit
+Both fields control how many times a promotion can be used, but they operate at different levels:
+
+1. usage_limit (Per Promotion Limit)
+   Definition: The maximum number of times this specific promotion can be used across ALL customers combined.
+
+Also known as: Total usage cap, Global limit, Stock limit
+
+Purpose: Controls the total availability of the promotion to manage costs and scarcity.
+
+Example:
+
+text
+usage_limit = 100
+Only 100 customers can redeem this promotion
+
+After 100 redemptions, the promotion expires
+
+Use Cases:
+
+Flash sales with limited stock
+
+Exclusive offers with limited capacity
+
+Cost control for expensive discounts
+
+Creating urgency ("Only 50 spots available!")
+
+2. total_usage_limit (Per User Limit)
+   Definition: The maximum number of times a single customer can use this promotion.
+
+Also known as: Per-user limit, Individual limit
+
+Purpose: Prevents the same customer from abusing the promotion multiple times.
+
+Example:
+
+text
+total_usage_limit = 1
+Each customer can use this promotion only once
+
+Customer A uses it → ✅ Allowed
+
+Customer A tries again → ❌ Denied
+
+Use Cases:
+
+First-purchase discounts
+
+Referral bonuses
+
+Seasonal promotions (once per season)
+
+Preventing abuse/fraud

@@ -33,8 +33,15 @@ class ClientPromotionController extends Controller
                         'logo_url' => $promotion->merchant->logo_url ?? null,
                         'category' => $promotion->merchant->category ?? null,
                     ],
-                    'image_url' => $promotion->image_url ?? null,
+                    'poster_image' => $promotion->poster_image_url,
+                    'poster_thumbnail' => $promotion->poster_thumbnail_url,
                     'status' => $promotion->status,
+                    'end_date' => $promotion->end_date,
+                    'qr_code' => $promotion->qr_code,
+                    'min_order_amount' => $promotion->min_order_amount,
+                    'usage_limit' => $promotion->usage_limit,
+                    'total_usage_limit' => $promotion->total_usage_limit,
+                    'used_count' => $promotion->used_count,
                 ];
             });
 
@@ -57,7 +64,7 @@ class ClientPromotionController extends Controller
             ], 404);
         }
 
-        return response()->json([
+        return response()->json([   
             'data' => [
                 'promotion_id' => $promotion->promotion_id,
                 'title' => $promotion->title,
@@ -68,10 +75,15 @@ class ClientPromotionController extends Controller
                     'business_name' => $promotion->merchant->business_name ?? null,
                     'logo_url' => $promotion->merchant->logo_url ?? null,
                 ],
-                'image_url' => $promotion->image_url ?? null,
+                'poster_image' => $promotion->poster_image_url,
+                'poster_thumbnail' => $promotion->poster_thumbnail_url,
                 'status' => $promotion->status,
                 'end_date' => $promotion->end_date,
+                'qr_code' => $promotion->qr_code,
                 'min_order_amount' => $promotion->min_order_amount,
+                'usage_limit' => $promotion->usage_limit,
+                'total_usage_limit' => $promotion->total_usage_limit,
+                'used_count' => $promotion->used_count,
             ],
             'message' => 'Promotion retrieved successfully',
         ]);

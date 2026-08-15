@@ -24,6 +24,8 @@ class QrCodeUsage extends Model
         'device_id',
         'location',
         'scanned_at',
+        'redeemed_by', // Add this field to track who redeemed
+        'status', // pending, completed, cancelled
     ];
 
     protected $casts = [
@@ -54,5 +56,10 @@ class QrCodeUsage extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function redeemedBy()
+    {
+        return $this->belongsTo(User::class, 'redeemed_by');
     }
 }
