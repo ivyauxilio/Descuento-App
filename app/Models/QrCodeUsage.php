@@ -26,11 +26,15 @@ class QrCodeUsage extends Model
         'scanned_at',
         'redeemed_by', // Add this field to track who redeemed
         'status', // pending, completed, cancelled
+        'metadata',
     ];
 
     protected $casts = [
         'discount_applied' => 'decimal:2',
         'scanned_at' => 'datetime',
+        'amount_paid' => 'decimal:2',
+        'redeemed_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     protected static function boot()
@@ -61,5 +65,9 @@ class QrCodeUsage extends Model
     public function redeemedBy()
     {
         return $this->belongsTo(User::class, 'redeemed_by');
+    }
+    public function card()
+    {
+        return $this->belongsTo(PhysicalCard::class, 'card_id', 'card_id');
     }
 }

@@ -431,15 +431,15 @@ class PromotionController extends Controller
     private function generateUniqueQrCode(): string
     {
         // $prefix = 'PROMO';
-        $timestamp = now()->timestamp;
-        $random = strtoupper(Str::random(8));
+        // $timestamp = now()->timestamp;
+        $qrCode = strtoupper(Str::random(8));
         
-        $qrCode = $timestamp . '-' . $random;
+        // $qrCode = $random;
 
         // Ensure uniqueness
         while (Promotion::where('qr_code', $qrCode)->exists()) {
-            $random = strtoupper(Str::random(8));
-            $qrCode = $timestamp . '-' . $random;
+            $qrCode = strtoupper(Str::random(8));
+            // $qrCode = $random;
         }
 
         return $qrCode;

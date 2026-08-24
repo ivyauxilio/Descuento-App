@@ -403,18 +403,41 @@ class Promotion extends Model
                 return false;
             }
         }
+                // Check user usage limit
+        if ($this->total_usage_limit) {
+            $userUsage = QrCodeUsage::where('promotion_id', $this->promotion_id)
+                ->where('user_id', $userId)
+                ->where('status', 'completed')
+                ->count();
+
+            if ($userUsage >= $this->total_usage_limit) {
+                return false;
+            }
+        }
+
+               // Check 24-hour cooldown
+        $lastUsage = QrCodeUsage::where('promotion_id', $this->promotion_id)
+            ->where('user_id', $userId)
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($lastUsage && $lastUsage->created_at->diffInHours(now()) < 24) {
+            return false;
+        }
+
 
         return true;
     }
 
     public function redeem($userId, $merchantId): array
     {
-        if (!$this->canUserRedeem($userId)) {
-            return [
-                'success' => false,
-                'message' => 'This promotion is not available for redemption.',
-            ];
-        }
+        // if (!$this->canUserRedeem($userId)) {
+        //     return [
+        //         'success' => false,
+        //         'message' => 'This promotion is not available for redemption.',
+        //     ];
+        // }
 
         try {
             // Create usage record
@@ -508,5 +531,47 @@ class Promotion extends Model
             return asset('storage/' . $this->poster_thumbnail);
         }
         return null;
+    }
+
+        /**
+     * Get the cooldown remaining hours for a user.
+     */
+    public function getCooldownRemaining($userId): ?int
+    {
+        $lastUsage = QrCodeUsage::where('promotion_id', $this->promotion_id)
+            ->where('user_id', $userId)
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$lastUsage) {
+            return null;
+        }
+
+        $hoursSinceLastUsage = $lastUsage->created_at->diffInHours(now());
+        
+        if ($hoursSinceLastUsage >= 24) {
+            return 0;
+        }
+
+        return 24 - $hoursSinceLastUsage;
+    }
+
+    /**
+     * Get the next available redemption time for a user.
+     */
+    public function getNextAvailableAt($userId): ?\DateTime
+    {
+        $lastUsage = QrCodeUsage::where('promotion_id', $this->promotion_id)
+            ->where('user_id', $userId)
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$lastUsage) {
+            return now();
+        }
+
+        return $lastUsage->created_at->addHours(24);
     }
 }

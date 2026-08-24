@@ -33,8 +33,16 @@ class QRScanController extends Controller
                     'success' => false,
                     'message' => 'Merchant account not found.',
                 ], 404);
+            }            
+            // Check if user exists
+            // $user = User::find($request->user_id);
+            $user = User::where('uuid', $request->user_id)->first();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found.',
+                ], 404);
             }
-
             // Find the promotion
             $promotion = Promotion::where('merchant_id', $merchant->merchant_id)
                 ->where('promotion_id', $request->promotion_id)
@@ -63,31 +71,61 @@ class QRScanController extends Controller
                 ], 422);
             }
 
-            // Check if user exists
-            // $user = User::find($request->user_id);
-            $user = User::where('uuid', $request->user_id)->first();
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found.',
-                ], 404);
-            }
-
-            // Validate token (anti-replay attack)
-            if ($request->redemption_token) {
-                // Check if token was already used
-                $existingUsage = QrCodeUsage::where('promotion_id', $promotion->promotion_id)
-                    ->where('qr_code', $promotion->qr_code)
+            // CHECK USER USAGE LIMIT (Per User)
+            if ($promotion->total_usage_limit) {
+                $userUsageCount = QrCodeUsage::where('promotion_id', $promotion->promotion_id)
                     ->where('user_id', $user->id)
-                    ->exists();
+                    ->where('status', 'completed')
+                    ->count();
 
-                if ($existingUsage) {
+                if ($userUsageCount >= $promotion->total_usage_limit) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'This QR code has already been used.',
+                        'message' => "The customer reached the maximum usage limit of {$promotion->total_usage_limit} times for this promotion.",
                     ], 422);
                 }
             }
+
+            // CHECK 24-HOUR COOLDOWN (Anti-spam)
+            $lastUsage = QrCodeUsage::where('promotion_id', $promotion->promotion_id)
+                ->where('user_id', $user->id)
+                ->where('status', 'completed')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($lastUsage) {
+                $hoursSinceLastUsage = $lastUsage->created_at->diffInHours(now());
+                
+                if ($hoursSinceLastUsage < 24) {
+                    $remainingHours = 24 - $hoursSinceLastUsage;
+                    return response()->json([
+                        'success' => false,
+                        'message' => "You can redeem this promotion again in {$remainingHours} hour(s). Please wait 24 hours between redemptions.",
+                        'data' => [
+                            'last_redemption_at' => $lastUsage->created_at,
+                            'hours_remaining' => $remainingHours,
+                            'can_redeem_at' => $lastUsage->created_at->addHours(24),
+                        ]
+                    ], 422);
+                }
+            }
+
+            // Validate token (anti-replay attack)
+            // if ($request->redemption_token) {
+            //     // Check if token was already used
+            //     $existingUsage = QrCodeUsage::where('promotion_id', $promotion->promotion_id)
+            //         ->where('qr_code', $promotion->qr_code)
+            //         ->where('user_id', $user->id)
+            //         ->where('status', 'completed')
+            //         ->exists();
+
+            //     if ($existingUsage) {
+            //         return response()->json([
+            //             'success' => false,
+            //             'message' => 'This QR code has already been used.',
+            //         ], 422);
+            //     }
+            // }
 
             // Redeem the promotion
             $result = $promotion->redeem($user->id, $merchant->merchant_id);
@@ -140,5 +178,52 @@ class QRScanController extends Controller
             return 'Buy 1 Get 1 Free';
         }
         return 'Special Offer';
+    }
+
+        /**
+     * Verify card without applying discount.
+     */
+    public function verify(Request $request)
+    {
+        $request->validate([
+            'qr_data' => 'required|string',
+        ]);
+
+        try {
+            $card = PhysicalCard::where('qr_code', $request->qr_data)->first();
+
+            if (!$card) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Card not found.',
+                ], 404);
+            }
+
+            $isActive = $card->isActive();
+            $isExpired = $card->isExpired();
+
+            return response()->json([
+                'valid' => $isActive && !$isExpired,
+                'data' => [
+                    'card_id' => $card->card_id,
+                    'card_number' => $card->getMaskedNumber(),
+                    'status' => $card->status,
+                    'balance' => $card->balance,
+                    'points' => $card->points,
+                    'expires_at' => $card->expires_at,
+                    'is_active' => $isActive,
+                    'is_expired' => $isExpired,
+                ],
+                'message' => $isActive ? 'Card is valid.' : 'Card is not valid.',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Card verification failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'valid' => false,
+                'message' => 'Failed to verify card.',
+            ], 500);
+        }
     }
 }

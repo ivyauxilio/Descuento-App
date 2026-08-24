@@ -8,6 +8,8 @@ use App\Http\Controllers\Merchant\MerchantController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Client\ClientPromotionController;
 use App\Http\Controllers\Merchant\QRScanController;
+use App\Http\Controllers\Merchant\CardQRController;
+use App\Http\Controllers\Client\CardController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -66,10 +68,23 @@ Route::middleware('auth:api')->group(function () {
         Route::post('qr-code/verify', [QRCodeController::class, 'verify']);
         Route::get('qr-code/{promotion}', [QRCodeController::class, 'getQrData']);
         Route::get('qr-code-stats', [QRCodeController::class, 'getStats']);
+
+        Route::post('/card/scan', [CardQRController::class, 'scan']);
+        Route::get('/card/validate', [CardQRController::class, 'validateCard']);
+        Route::post('/card/scan-qr', [CardQRController::class, 'getCardByQr']);
     });
     
     Route::prefix('client')->name('client.')->group(function () {
         Route::get('/promotions', [ClientPromotionController::class, 'index']);
         Route::get('/promotions/{id}', [ClientPromotionController::class, 'show']); // Add this route
+
+        Route::get('/cards', [CardController::class, 'index']);
+        Route::post('/cards/activate', [CardController::class, 'activate']);
+        Route::get('/cards/{id}', [CardController::class, 'show']);
+
+        Route::post('/cards/{id}/lock', [CardController::class, 'toggleLock']);
+        Route::post('/cards/{id}/lost', [CardController::class, 'reportLost']);
+        Route::get('/cards/{id}/balance', [CardController::class, 'getBalance']);
+        Route::get('/cards/{id}/transactions', [CardController::class, 'getTransactions']);
     });
 });
