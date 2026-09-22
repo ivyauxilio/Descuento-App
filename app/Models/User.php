@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'remember_token',
     ];
 
     /**
@@ -110,7 +111,10 @@ class User extends Authenticatable
         // This assumes the user has a one-to-one relationship with merchant
         return $this->hasOne(Merchant::class, 'owner_id', 'id');
     }
-
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'customer_id', 'id');
+    }
 
     /**
      * Check if user is admin.

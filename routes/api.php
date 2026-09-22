@@ -9,7 +9,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Client\ClientPromotionController;
 use App\Http\Controllers\Merchant\QRScanController;
 use App\Http\Controllers\Merchant\CardQRController;
+use App\Http\Controllers\Merchant\OrderController;
+use App\Http\Controllers\Merchant\ProductController;
 use App\Http\Controllers\Client\CardController;
+
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -72,6 +75,33 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/card/scan', [CardQRController::class, 'scan']);
         Route::get('/card/validate', [CardQRController::class, 'validateCard']);
         Route::post('/card/scan-qr', [CardQRController::class, 'getCardByQr']);
+
+        Route::get('/orders', [OrderController::class, 'index']);
+        Route::get('/orders/{orderId}', [OrderController::class, 'show']);
+        Route::put('/orders/{orderId}/status', [OrderController::class, 'updateStatus']);
+        Route::post('/orders', [OrderController::class, 'store']);
+        Route::post('/orders/{orderId}/cancel', [OrderController::class, 'cancel']);
+        Route::get('/orders/{orderId}/invoice', [OrderController::class, 'generateInvoice']);
+
+
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::get('/products/stats', [ProductController::class, 'stats']);
+        Route::get('/products/categories', [ProductController::class, 'categories']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::get('/products/{id}', [ProductController::class, 'show']);
+        Route::put('/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+        Route::patch('/products/{id}/toggle-status', [ProductController::class, 'toggleStatus']);
+        Route::patch('/products/{id}/toggle-featured', [ProductController::class, 'toggleFeatured']);
+        Route::post('/products/{id}/duplicate', [ProductController::class, 'duplicate']);
+        Route::post('/products/bulk/stock', [ProductController::class, 'bulkUpdateStock']);
+        
+        // Discount routes
+        Route::post('/products/{productId}/discount', [ProductController::class, 'manageDiscount']);
+        
+        // Points routes
+        Route::post('/products/{productId}/points', [ProductController::class, 'managePoints']);
+
     });
     
     Route::prefix('client')->name('client.')->group(function () {
@@ -86,5 +116,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/cards/{id}/lost', [CardController::class, 'reportLost']);
         Route::get('/cards/{id}/balance', [CardController::class, 'getBalance']);
         Route::get('/cards/{id}/transactions', [CardController::class, 'getTransactions']);
+
+        Route::get('/orders', [OrderController::class, 'customerOrders']);
+        Route::get('/orders/{orderId}', [OrderController::class, 'customerOrderDetail']);
+        Route::post('/orders', [OrderController::class, 'store']); // Create order from client app
     });
 });

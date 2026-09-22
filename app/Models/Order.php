@@ -54,4 +54,14 @@ class Order extends Model
     {
         return $this->hasOne(Redemption::class, 'order_id', 'order_id');
     }
+    public function qrUsage()
+    {
+        return $this->hasOne(QRCodeUsage::class, 'order_id');
+    }
+
+    public function promotionUsages()
+    {
+        return $this->hasMany(QRCodeUsage::class, 'order_id')
+            ->where('redemption_context', 'online_order');
+    }
 }

@@ -99,6 +99,23 @@ class Merchant extends Model
     {
         return $query->where('status', 'approved');
     }
+    
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'merchant_id', 'merchant_id');
+    }
+
+    public function productDiscounts()
+    {
+        return $this->hasMany(ProductDiscount::class, 'merchant_id', 'merchant_id');
+    }
+
+    public function productPoints()
+    {
+        return $this->hasMany(ProductPoints::class, 'merchant_id', 'merchant_id');
+    }
+
     /**
      * Search scope.
      */
