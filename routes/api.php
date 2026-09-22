@@ -12,6 +12,7 @@ use App\Http\Controllers\Merchant\CardQRController;
 use App\Http\Controllers\Merchant\OrderController;
 use App\Http\Controllers\Merchant\ProductController;
 use App\Http\Controllers\Client\CardController;
+use App\Http\Controllers\Merchant\PlanController;
 
 
 // Public routes
@@ -101,6 +102,16 @@ Route::middleware('auth:api')->group(function () {
         
         // Points routes
         Route::post('/products/{productId}/points', [ProductController::class, 'managePoints']);
+
+
+        // Plans
+        Route::get('/plans', [PlanController::class, 'index']);
+        Route::get('/plans/{slug}', [PlanController::class, 'show']);
+        
+        // Wallet
+        Route::get('/wallet', [PlanController::class, 'wallet']);
+        Route::post('/plans/purchase', [PlanController::class, 'purchase']);
+        Route::get('/wallet/transactions', [PlanController::class, 'transactions']);
 
     });
     
