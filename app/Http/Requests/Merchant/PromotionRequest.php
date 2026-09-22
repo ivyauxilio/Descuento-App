@@ -42,9 +42,6 @@ class PromotionRequest extends FormRequest
             'title.max' => 'Promotion title cannot exceed 255 characters.',
             'promo_type.required' => 'Please select a promotion type.',
             'promo_type.in' => 'Invalid promotion type selected.',
-            'value.required' => 'Promotion value is required.',
-            'value.numeric' => 'Value must be a number.',
-            'value.min' => 'Value must be at least 0.',
             'start_date.required' => 'Start date is required.',
             'start_date' => $this->isMethod('POST') 
                 ? 'required|date|after_or_equal:today'  // Create: future date required

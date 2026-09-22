@@ -192,21 +192,20 @@ class MenuItem extends Model
     }
 
     // Log transaction
-    public function logTransaction($type, $quantity, $previous, $reason = null, $referenceType = null, $referenceId = null)
-    {
-        InventoryTransaction::create([
-            'transaction_id' => Str::uuid(),
-            'menu_item_id' => $this->menu_item_id,
-            'type' => $type,
-            'quantity' => $quantity,
-            'previous_quantity' => $previous,
-            'new_quantity' => $this->stock_quantity,
-            'reason' => $reason,
-            'reference_type' => $referenceType,
-            'reference_id' => $referenceId,
-            'performed_by' => auth()->id(),
-        ]);
-    }
+        public function logTransaction($type, $quantity, $previous, $reason = null, $referenceType = null, $referenceId = null)
+        {
+            InventoryTransaction::create([
+                'menu_item_id'      => $this->menu_item_id,
+                'type'              => $type,
+                'quantity'          => $quantity,
+                'previous_quantity' => $previous,
+                'new_quantity'      => $this->stock_quantity,
+                'reason'            => $reason,
+                'reference_type'    => $referenceType,
+                'reference_id'      => $referenceId,
+                'performed_by'      => auth()->id(),
+            ]);
+        }
 
     // Relationships
     public function transactions()

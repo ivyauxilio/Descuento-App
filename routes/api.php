@@ -66,6 +66,8 @@ Route::middleware('auth:api')->group(function () {
         Route::put('promotions/{promotion}/status', [PromotionController::class, 'updateStatus']);
         Route::delete('promotions/{promotion}/poster', [PromotionController::class, 'deletePoster'])->name('promotions.delete-poster');
         Route::post('/promotions/redeem', [QRScanController::class, 'redeem']);
+
+        Route::post('/promotions/check-credits', [PromotionController::class, 'checkCredits']);
         // Route::post('/scan/redeem', [QRScanController::class, 'redeem']);
 
         // QR Code routes
@@ -103,7 +105,6 @@ Route::middleware('auth:api')->group(function () {
         // Points routes
         Route::post('/products/{productId}/points', [ProductController::class, 'managePoints']);
 
-
         // Plans
         Route::get('/plans', [PlanController::class, 'index']);
         Route::get('/plans/{slug}', [PlanController::class, 'show']);
@@ -112,6 +113,16 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/wallet', [PlanController::class, 'wallet']);
         Route::post('/plans/purchase', [PlanController::class, 'purchase']);
         Route::get('/wallet/transactions', [PlanController::class, 'transactions']);
+
+
+        // Route::get('/plans', [SubscriptionPlanController::class, 'index']);
+        // Route::post('/plans', [SubscriptionPlanController::class, 'store']);
+        // Route::get('/plans/{id}', [SubscriptionPlanController::class, 'show']);
+        // Route::put('/plans/{id}', [SubscriptionPlanController::class, 'update']);
+        // Route::delete('/plans/{id}', [SubscriptionPlanController::class, 'destroy']);
+        // Route::patch('/plans/{id}/toggle-status', [SubscriptionPlanController::class, 'toggleStatus']);
+        // Route::post('/plans/reorder', [SubscriptionPlanController::class, 'reorder']);
+
 
     });
     

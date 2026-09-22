@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Merchant\PromotionRequest;
 use App\Models\Promotion;
 use App\Models\Merchant;
+use App\Models\MerchantWallet;
+use App\Models\SystemSetting;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+
+use App\Services\CreditRefundService;
 
 class PromotionController extends Controller
 {
@@ -105,26 +110,110 @@ class PromotionController extends Controller
      */
     public function store(PromotionRequest $request)
     {
+        $merchant = $this->getMerchant();
+
+        if (!$merchant) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Merchant not found.',
+            ], 404);
+        }
+
+        $data = $request->validated();
+
+        // ✅ Validate voucher type explicitly
+        $allowedVoucherTypes = ['basic', 'featured', 'priority'];
+        $voucherType = $data['voucher_type'] ?? 'basic';
+
+        if (!in_array($voucherType, $allowedVoucherTypes, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid voucher type.',
+            ], 422);
+        }
+
+        // ✅ Determine credits needed
+        $creditsMap = [
+            'basic' => max(1, (int) SystemSetting::get('credits.basic_cost', 1)),
+            'featured' => max(1, (int) SystemSetting::get('credits.featured_cost', 2)),
+            'priority' => max(1, (int) SystemSetting::get('credits.priority_cost', 5)),
+        ];
+
+        $creditsNeeded = $creditsMap[$voucherType];
+
+        // ✅ Get or create wallet (safe against race conditions)
+        $wallet = MerchantWallet::firstOrCreate(
+            ['merchant_id' => $merchant->merchant_id],
+            [
+                'credit_balance' => 0,
+                'total_credits_purchased' => 0,
+                'total_credits_used' => 0,
+                'total_spent' => 0,
+            ]
+        );
+
+        // ✅ First check (fast path) — reject early
+        if ($wallet->credit_balance < $creditsNeeded) {
+            return response()->json([
+                'success' => false,
+                'message' => "You need {$creditsNeeded} credits to create this promotion, but you only have {$wallet->credit_balance}.",
+                'error_code' => 'INSUFFICIENT_CREDITS',
+                'data' => [
+                    'required_credits' => $creditsNeeded,
+                    'available_credits' => $wallet->credit_balance,
+                    'shortfall' => $creditsNeeded - $wallet->credit_balance,
+                    'voucher_type' => $voucherType,
+                    'buy_credits_url' => '/merchant/subscription',
+                ],
+            ], 402);
+        }
+
         try {
             DB::beginTransaction();
 
-            $merchant = $this->getMerchant();
+            // ✅ Lock the wallet row (prevents concurrent double-spend)
+            $lockedWallet = MerchantWallet::where('merchant_id', $merchant->merchant_id)
+                ->lockForUpdate()
+                ->first();
 
-            $data = $request->validated();
+            // ✅ Null check
+            if (!$lockedWallet) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Wallet not found. Please contact support.',
+                ], 500);
+            }
+
+            // ✅ Second check (inside transaction, after lock)
+            if ($lockedWallet->credit_balance < $creditsNeeded) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "You need {$creditsNeeded} credits but you only have {$lockedWallet->credit_balance}.",
+                    'error_code' => 'INSUFFICIENT_CREDITS',
+                    'data' => [
+                        'required_credits' => $creditsNeeded,
+                        'available_credits' => $lockedWallet->credit_balance,
+                        'shortfall' => $creditsNeeded - $lockedWallet->credit_balance,
+                        'voucher_type' => $voucherType,
+                        'buy_credits_url' => '/merchant/subscription',
+                    ],
+                ], 402);
+            }
+
+            // ✅ Fill in standard fields
             $data['merchant_id'] = $merchant->merchant_id;
-            
-            // Generate UUID for promotion_id
             $data['promotion_id'] = (string) Str::uuid();
-            
-            // Generate unique QR code
             $data['qr_code'] = $this->generateUniqueQrCode();
-
-            // Set default values
-            $data['status'] = $request->status ?? 'active';
+            $data['voucher_type'] = $voucherType;
+            $data['credits_used'] = $creditsNeeded;
+            $data['status'] = $data['status'] ?? 'active';
             $data['used_count'] = 0;
-            $data['usage_limit'] = $request->usage_limit ?? 100;
+            $data['usage_limit'] = $data['usage_limit'] ?? 100;
+            $data['is_active'] = true;
 
-            // Handle poster image upload
+            // ✅ Handle poster image upload
             if ($request->hasFile('poster_image')) {
                 $posterImage = $request->file('poster_image');
                 $imagePath = $this->uploadPosterImage($posterImage, $data['promotion_id']);
@@ -132,113 +221,168 @@ class PromotionController extends Controller
                 $data['poster_thumbnail'] = $imagePath['thumbnail'];
             }
 
-            // Set value to 0 for BOGO if not provided
-            if ($data['promo_type'] === 'bogo' && !isset($data['value'])) {
-                $data['value'] = 0;
-            }
-
-            // Handle tiered discount - ensure it's stored as JSON
-            if ($data['promo_type'] === 'tiered' && isset($data['tiers'])) {
-                $data['tiers'] = json_encode($data['tiers']);
-            }
-
-            // Handle is_stackable as boolean
-            if (isset($data['is_stackable'])) {
-                $data['is_stackable'] = filter_var($data['is_stackable'], FILTER_VALIDATE_BOOLEAN);
-            }
-
             // ============================================
-            // TYPE-SPECIFIC VALIDATION & PROCESSING
+            // TYPE-SPECIFIC PROCESSING
             // ============================================
 
-            // Percentage Discount
-            if ($data['promo_type'] === 'percentage') {
-                $data['value'] = $request->value;
-                $data['max_discount_amount'] = $request->max_discount_amount ?? null;
+            $promoType = $data['promo_type'];
+
+            switch ($promoType) {
+                case 'percentage':
+                    $data['value'] = $request->value ?? 0;
+                    $data['max_discount_amount'] = $request->max_discount_amount ?? null;
+                    break;
+
+                case 'fixed':
+                    $data['value'] = $request->value ?? 0;
+                    break;
+
+                case 'bogo':
+                    $data['value'] = 0;
+                    $data['free_menu_item_id'] = $request->free_menu_item_id;
+                    $data['required_menu_item_id'] = $request->required_menu_item_id;
+                    break;
+
+                case 'free_gift':
+                    $data['value'] = 0;
+                    $data['free_gift_product_id'] = $request->free_gift_product_id;
+                    break;
+
+                case 'bundle':
+                    $data['value'] = 0;
+                    $data['buy_quantity'] = $request->buy_quantity;
+                    $data['get_quantity'] = $request->get_quantity;
+                    $data['get_discount_percentage'] = $request->get_discount_percentage ?? 0;
+                    break;
+
+                case 'tiered':
+                    $data['value'] = 0;
+                    $tiers = $data['tiers'] ?? null;
+                    if (is_array($tiers)) {
+                        $data['tiers'] = json_encode($tiers);
+                    }
+                    break;
+
+                case 'free_shipping':
+                    $data['value'] = 0;
+                    break;
+
+                case 'loyalty_points':
+                    $data['value'] = 0;
+                    $data['points_multiplier'] = $request->points_multiplier ?? 1;
+                    break;
+
+                case 'buy_x_get_y':
+                    $data['value'] = 0;
+                    $data['buy_quantity'] = $request->buy_quantity;
+                    $data['get_quantity'] = $request->get_quantity;
+                    $data['get_discount_percentage'] = $request->get_discount_percentage ?? 0;
+                    break;
+
+                case 'first_purchase':
+                    $data['value'] = $request->value ?? 0;
+                    break;
+
+                case 'flash_sale':
+                    $data['value'] = $request->value ?? 0;
+                    $data['max_discount_amount'] = $request->max_discount_amount ?? null;
+                    break;
+
+                default:
+                    $data['value'] = $request->value ?? 0;
             }
 
-            // Fixed Amount
-            if ($data['promo_type'] === 'fixed') {
-                $data['value'] = $request->value;
-            }
-
-            // BOGO (Buy One Get One)
-            if ($data['promo_type'] === 'bogo') {
+            // ✅ Ensure value is never null for NOT NULL columns
+            if (!isset($data['value']) || $data['value'] === null) {
                 $data['value'] = 0;
-                $data['free_menu_item_id'] = $request->free_menu_item_id;
-                $data['required_menu_item_id'] = $request->required_menu_item_id;
             }
 
-            // Free Gift
-            if ($data['promo_type'] === 'free_gift') {
-                $data['value'] = 0;
-                $data['free_gift_product_id'] = $request->free_gift_product_id;
-            }
+            // ✅ is_stackable as proper boolean
+            $data['is_stackable'] = filter_var(
+                $data['is_stackable'] ?? false,
+                FILTER_VALIDATE_BOOLEAN
+            );
 
-            // Bundle Deal
-            if ($data['promo_type'] === 'bundle') {
-                $data['buy_quantity'] = $request->buy_quantity;
-                $data['get_quantity'] = $request->get_quantity;
-                $data['get_discount_percentage'] = $request->get_discount_percentage ?? 0;
-            }
-
-            // Tiered Discount
-            if ($data['promo_type'] === 'tiered') {
-                $data['value'] = 0;
-                // Tiers should already be JSON encoded
-            }
-
-            // Free Shipping
-            if ($data['promo_type'] === 'free_shipping') {
-                $data['value'] = 0;
-            }
-
-            // Loyalty Points
-            if ($data['promo_type'] === 'loyalty_points') {
-                $data['value'] = 0;
-                $data['points_multiplier'] = $request->points_multiplier ?? 1;
-            }
-
-            // Buy X Get Y
-            if ($data['promo_type'] === 'buy_x_get_y') {
-                $data['buy_quantity'] = $request->buy_quantity;
-                $data['get_quantity'] = $request->get_quantity;
-                $data['get_discount_percentage'] = $request->get_discount_percentage;
-            }
-
-            // First Purchase
-            if ($data['promo_type'] === 'first_purchase') {
-                $data['value'] = $request->value;
-            }
-
-            // Flash Sale
-            if ($data['promo_type'] === 'flash_sale') {
-                $data['value'] = $request->value;
-                $data['max_discount_amount'] = $request->max_discount_amount ?? null;
-            }
-
-            // Create the promotion
+            // ✅ Create the promotion
             $promotion = Promotion::create($data);
+
+            // ✅ DEDUCT CREDITS (inside transaction, uses locked wallet)
+            $lockedWallet->deductCredits($creditsNeeded, [
+                'promotion_id' => $promotion->promotion_id,
+                'description' => "Created {$voucherType} promotion: {$request->title}",
+                'metadata' => [
+                    'voucher_type' => $voucherType,
+                    'promo_type' => $promoType,
+                    'promo_value' => $data['value'],
+                ],
+            ]);
 
             DB::commit();
 
+            // ✅ Return with fresh balance
+            $promotion->load('merchant');
+
             return response()->json([
-                'data' => $promotion->load('merchant'),
-                'message' => 'Promotion created successfully',
+                'success' => true, // ✅ Added
+                'data' => [
+                    'promotion' => $promotion,
+                    'credits' => [
+                        'used' => $creditsNeeded,
+                        'remaining' => $lockedWallet->fresh()->credit_balance,
+                    ],
+                ],
+                'message' => "Promotion created! {$creditsNeeded} credits deducted.",
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Promotion creation failed: ' . $e->getMessage());
-            Log::error('Request data: ' . json_encode($request->all()));
-            
+            Log::error('Promotion creation failed: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
+                'success' => false, // ✅ Added for consistency
                 'message' => 'Failed to create promotion',
-                'error' => $e->getMessage(),
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
+    /**
+     * Check credit cost before opening the create form
+     */
+    public function checkCredits(Request $request)
+    {
+        $request->validate([
+            'voucher_type' => 'required|in:basic,featured,priority',
+        ]);
 
+        $merchant = auth()->user()->merchant;
+
+        $creditsMap = [
+            'basic' => (int) SystemSetting::get('credits.basic_cost', 1),
+            'featured' => (int) SystemSetting::get('credits.featured_cost', 2),
+            'priority' => (int) SystemSetting::get('credits.priority_cost', 5),
+        ];
+
+        $creditsNeeded = $creditsMap[$request->voucher_type];
+
+        $wallet = MerchantWallet::firstOrCreate(
+            ['merchant_id' => $merchant->merchant_id],
+            ['credit_balance' => 0]
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'required_credits' => $creditsNeeded,
+                'available_credits' => $wallet->credit_balance,
+                'has_enough' => $wallet->credit_balance >= $creditsNeeded,
+                'shortfall' => max(0, $creditsNeeded - $wallet->credit_balance),
+                'voucher_type' => $request->voucher_type,
+            ],
+        ]);
+    }
 
     /**
      * Display promotion details.
@@ -654,6 +798,60 @@ class PromotionController extends Controller
         
         imagedestroy($sourceImage);
         imagedestroy($thumbnail);
+    }
+
+    public function cancel(Request $request, $id, CreditRefundService $refundService)
+    {
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $merchant = auth()->user()->merchant;
+        
+        $promotion = Promotion::where('merchant_id', $merchant->merchant_id)
+            ->where('promotion_id', $id)
+            ->firstOrFail();
+
+        if ($promotion->status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Promotion is already cancelled.',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $promotion->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancellation_reason' => $request->reason,
+            ]);
+
+            // ✅ Refund credits
+            $refundResult = $refundService->refundPromotion(
+                $promotion,
+                $request->reason ?? 'Promotion cancelled by merchant'
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'promotion' => $promotion->fresh(),
+                    'refund' => $refundResult,
+                ],
+                'message' => 'Promotion cancelled. ' . ($refundResult['message'] ?? ''),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel promotion: ' . $e->getMessage(),
+            ], 500);
+        }
     }
     
 

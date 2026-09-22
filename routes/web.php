@@ -11,6 +11,12 @@ use App\Http\Controllers\Admin\AdminPromotionController;
 use App\Http\Controllers\Admin\AdminMenuController;
 use App\Http\Controllers\Admin\AdminInventoryController;
 
+use App\Http\Controllers\Admin\SubscriptionPlanController;
+use App\Http\Controllers\Admin\SystemSettingController;
+
+use App\Http\Controllers\Admin\WalletController;
+use App\Http\Controllers\Admin\TransactionController;
+
 use App\Http\Controllers\Merchant\PromotionController;
 
 use Illuminate\Support\Facades\Route;
@@ -168,6 +174,60 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/inventory/merchant/{merchant}', [AdminInventoryController::class, 'merchantInventory'])->name('inventory.merchant');
         Route::get('/inventory/{menu_item}', [AdminInventoryController::class, 'show'])->name('inventory.show');
         Route::get('/inventory/low-stock', [AdminInventoryController::class, 'lowStock'])->name('inventory.low-stock');
+
+        // Subscription Plans
+        Route::get('plans', [SubscriptionPlanController::class, 'index'])->name('plans.index');
+        Route::get('plans/create', [SubscriptionPlanController::class, 'create'])->name('plans.create');
+        Route::post('plans', [SubscriptionPlanController::class, 'store'])->name('plans.store');
+        Route::get('plans/{plan}', [SubscriptionPlanController::class, 'show'])->name('plans.show');
+        Route::get('plans/{plan}/edit', [SubscriptionPlanController::class, 'edit'])->name('plans.edit');
+        Route::put('plans/{plan}', [SubscriptionPlanController::class, 'update'])->name('plans.update');
+        Route::delete('plans/{plan}', [SubscriptionPlanController::class, 'destroy'])->name('plans.destroy');
+        Route::patch('plans/{plan}/toggle-status', [SubscriptionPlanController::class, 'toggleStatus'])->name('plans.toggle-status');
+        Route::post('plans/reorder', [SubscriptionPlanController::class, 'reorder'])->name('plans.reorder');
+
+        // Plans
+        Route::patch('plans/{plan}/toggle-status', [SubscriptionPlanController::class, 'toggleStatus'])
+            ->name('plans.toggle-status');
+
+        // Settings
+        Route::get('settings/payment', [SystemSettingController::class, 'payment'])->name('settings.payment');
+        Route::put('settings/payment', [SystemSettingController::class, 'updatePayment'])->name('settings.payment.update');
+        Route::get('settings/credits', [SystemSettingController::class, 'credits'])->name('settings.credits');
+        Route::put('settings/credits', [SystemSettingController::class, 'updateCredits'])->name('settings.credits.update');
+
+        Route::get('/public/settings', [SystemSettingController::class, 'publicSettings']);
+
+        // Wallets
+        Route::get('wallets', [WalletController::class, 'index'])->name('wallets.index');
+        Route::get('wallets/{wallet}', [WalletController::class, 'show'])->name('wallets.show');
+        Route::post('wallets/{wallet}/adjust', [WalletController::class, 'adjust'])->name('wallets.adjust');
+
+        // System settings
+        // Route::get('/settings', [SystemSettingController::class, 'index']);
+        // Route::put('/settings', [SystemSettingController::class, 'update']);
+
+        // Transactions
+        Route::get('transactions', [TransactionController::class, 'index'])
+            ->name('transactions.index');
+        
+        Route::get('transactions/export', [TransactionController::class, 'export'])
+            ->name('transactions.export');
+        
+        Route::post('transactions/bulk-delete', [TransactionController::class, 'bulkDelete'])
+            ->name('transactions.bulk-delete');
+        
+        Route::get('transactions/{id}', [TransactionController::class, 'show'])
+            ->name('transactions.show');
+        
+        Route::post('transactions/{id}/refund', [TransactionController::class, 'refund'])
+            ->name('transactions.refund');
+        
+        Route::post('transactions/{id}/reverse', [TransactionController::class, 'reverse'])
+            ->name('transactions.reverse');
+        
+        Route::delete('transactions/{id}', [TransactionController::class, 'destroy'])
+            ->name('transactions.destroy');
     
     });
 

@@ -9,8 +9,8 @@ class InventoryTransaction extends Model
 {
     protected $table = 'inventory_transactions';
     protected $primaryKey = 'transaction_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    public $incrementing = true;      // bigIncrements → let MySQL assign it
+    protected $keyType = 'int';       // bigIncrements → integer key
 
     protected $fillable = [
         'transaction_id',
@@ -34,11 +34,11 @@ class InventoryTransaction extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->transaction_id)) {
-                $model->transaction_id = (string) Str::uuid();
-            }
-        });
+        // static::creating(function ($model) {
+        //     if (empty($model->transaction_id)) {
+        //         $model->transaction_id = (string) Str::uuid();
+        //     }
+        // });
     }
 
     // Relationships
