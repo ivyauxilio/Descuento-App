@@ -1,4 +1,3 @@
-{{-- resources/views/admin/wallets/index.blade.php --}}
 @extends('layouts.admin')
 
 @section('title', 'Merchant Wallets')
@@ -315,7 +314,8 @@
                 <h4 class="wallet-title"> <i class="fas fa-wallet wallet-title-icon me-2"></i> Merchant Wallets </h4>
                 <p class="wallet-subtitle"> Monitor merchant credit balances, purchases, usage, and spending. </p>
             </div>
-        </div> {{-- Main Card --}} <div class="wallet-card"> {{-- Search --}} <div class="wallet-search-wrapper">
+        </div> {{-- Main Card --}}
+        <div class="wallet-card"> {{-- Search --}} <div class="wallet-search-wrapper">
                 <form method="GET" class="d-flex gap-2 wallet-search-form">
                     <div class="position-relative flex-grow-1"> <i class="fas fa-search wallet-search-icon"></i> <input
                             type="text" name="search" value="{{ request('search') }}"

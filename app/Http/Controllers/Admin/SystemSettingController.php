@@ -53,6 +53,42 @@ class SystemSettingController extends Controller
         return back()->with('success', 'Credit settings updated.');
     }
 
+    public function referral()
+    {
+        $settings = SystemSetting::where('group', 'referral')
+            ->orderBy('key')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $value = match($item->type) {
+                    'boolean' => (bool) $item->value,
+                    'number' => (float) $item->value,
+                    default => $item->value,
+                };
+                return [$item->key => [
+                    'value' => $value,
+                    'type' => $item->type,
+                    'label' => $item->label,
+                    'description' => $item->description,
+                ]];
+            });
+
+        return view('admin.settings.referral', compact('settings'));
+    }
+
+    public function updateReferral(Request $request)
+    {
+        $request->validate(['settings' => 'required|array']);
+
+        foreach ($request->settings as $key => $value) {
+            $setting = SystemSetting::where('key', $key)->first();
+            if ($setting) {
+                SystemSetting::set($key, $value, $setting->type, $setting->group);
+            }
+        }
+
+        return back()->with('success', 'Referral settings updated.');
+    }
+
     private function getGroupSettings(string $group)
     {
         return SystemSetting::where('group', $group)

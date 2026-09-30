@@ -13,11 +13,17 @@ use App\Http\Controllers\Merchant\OrderController;
 use App\Http\Controllers\Merchant\ProductController;
 use App\Http\Controllers\Client\CardController;
 use App\Http\Controllers\Merchant\PlanController;
+use App\Http\Controllers\Api\ReferralApiController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProductController as ClientProductController;
+// use App\Http\Controllers\Api\NotificationController as MerchantNotificationController;
 
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/webhooks/payment', [PaymentWebhookController::class, 'handle'])
+    ->name('webhooks.payment');
 
 // Protected routes (require authentication)
 Route::middleware('auth:sanctum')->group(function () {
@@ -28,6 +34,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', function () {
         return response()->json(['message' => 'Welcome to dashboard']);
     });
+
+    Route::get('/referrals/me', [ReferralApiController::class, 'me']);
+    Route::get('/referrals/list', [ReferralApiController::class, 'list']);
+    Route::get('/wallet', [ReferralApiController::class, 'wallet']);
+    Route::get('/wallet/transactions', [ReferralApiController::class, 'walletTransactions']);
 });
 
 // Merchant routes (protected by auth:api)
@@ -115,6 +126,17 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/wallet/transactions', [PlanController::class, 'transactions']);
 
 
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [NotificationController::class, 'index']);
+            Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+            Route::get('/{id}', [NotificationController::class, 'show']);
+            Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+            Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+            Route::delete('/{id}', [NotificationController::class, 'destroy']);
+            Route::delete('/', [NotificationController::class, 'clearAll']);
+        });
+
+
         // Route::get('/plans', [SubscriptionPlanController::class, 'index']);
         // Route::post('/plans', [SubscriptionPlanController::class, 'store']);
         // Route::get('/plans/{id}', [SubscriptionPlanController::class, 'show']);
@@ -123,6 +145,7 @@ Route::middleware('auth:api')->group(function () {
         // Route::patch('/plans/{id}/toggle-status', [SubscriptionPlanController::class, 'toggleStatus']);
         // Route::post('/plans/reorder', [SubscriptionPlanController::class, 'reorder']);
 
+        
 
     });
     
@@ -143,4 +166,38 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/orders/{orderId}', [OrderController::class, 'customerOrderDetail']);
         Route::post('/orders', [OrderController::class, 'store']); // Create order from client app
     });
+
+    Route::prefix('products')->group(function () {
+        // List + filters
+        Route::get('/', [ClientProductController::class, 'index']);
+
+        // Categories for filter chips
+        Route::get('/categories', [ClientProductController::class, 'categories']);
+
+        // Featured for home carousel
+        Route::get('/featured', [ClientProductController::class, 'featured']);
+
+        // Search (autocomplete)
+        Route::get('/search', [ClientProductController::class, 'search']);
+
+        // Single product — MUST be last (wildcard)
+        Route::get('/{id}', [ClientProductController::class, 'show']);
+    });
+
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::get('/{id}', [NotificationController::class, 'show']);
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
+        Route::delete('/', [NotificationController::class, 'clearAll']);
+    });
+});
+
+
+Route::middleware(['auth:sanctum', 'merchant'])->prefix('merchant')->group(function () {
+
+
+
 });

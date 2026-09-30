@@ -19,6 +19,10 @@ use App\Http\Controllers\Admin\TransactionController;
 
 use App\Http\Controllers\Merchant\PromotionController;
 
+use App\Http\Controllers\ReferralTrackingController;
+use App\Http\Controllers\Admin\ReferralController;
+use App\Http\Controllers\Admin\NotificationBroadcastController;
+
 use Illuminate\Support\Facades\Route;
 
 
@@ -120,6 +124,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         //     ->name('merchants.menu.remove-stock');
         // Route::post('/merchants/{merchant}/menu/{menu_item}/adjust-stock', [MenuItemController::class, 'merchantAdjustStock'])
         // ->name('merchants.menu.adjust-stock');
+
+        
 
         Route::prefix('merchants/{merchant}')->name('merchants.')->group(function () {
             
@@ -228,9 +234,52 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         Route::delete('transactions/{id}', [TransactionController::class, 'destroy'])
             ->name('transactions.destroy');
+            
     
+                    // ✅ Broadcast Notifications
+        Route::get('broadcasts', [NotificationBroadcastController::class, 'index'])
+            ->name('broadcasts.index');
+
+        Route::get('broadcasts/create', [NotificationBroadcastController::class, 'create'])
+            ->name('broadcasts.create');
+
+        Route::post('broadcasts', [NotificationBroadcastController::class, 'store'])
+            ->name('broadcasts.store');
+
+        Route::get('broadcasts/{id}', [NotificationBroadcastController::class, 'show'])
+            ->name('broadcasts.show');
+
+        Route::post('broadcasts/{id}/send', [NotificationBroadcastController::class, 'send'])
+            ->name('broadcasts.send');
+
+        Route::delete('broadcasts/{id}', [NotificationBroadcastController::class, 'destroy'])
+            ->name('broadcasts.destroy');
+
+        // AJAX helpers
+        Route::post('broadcasts/preview-audience', [NotificationBroadcastController::class, 'previewAudience'])
+            ->name('broadcasts.preview-audience');
+
+        Route::get('broadcasts/search-users', [NotificationBroadcastController::class, 'searchUsers'])
+            ->name('broadcasts.search-users');
     });
 
+
+    Route::get('/ref/{code}', [ReferralTrackingController::class, 'track'])->name('referral.track');
+    // Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
+
+
+            // Referrals
+        Route::get('referrals/list', [ReferralController::class, 'index'])->name('referrals.index');
+        Route::get('referrals/transactions', [ReferralController::class, 'transactions'])->name('referrals.transactions');
+        Route::post('referrals/bulk-approve', [ReferralController::class, 'bulkApprove'])->name('referrals.bulk-approve');
+        Route::get('referrals/{id}', [ReferralController::class, 'show'])->name('referrals.show');
+        Route::post('referrals/{id}/approve', [ReferralController::class, 'approve'])->name('referrals.approve');
+        Route::post('referrals/{id}/reject', [ReferralController::class, 'reject'])->name('referrals.reject');
+        Route::post('wallet-transactions/{id}/confirm', [ReferralController::class, 'confirmTransaction'])->name('wallet-transactions.confirm');
+
+
+        Route::get('settings/referral', [SystemSettingController::class, 'referral'])->name('settings.referral');
+        Route::put('settings/referral', [SystemSettingController::class, 'updateReferral'])->name('settings.referral.update');
 
 });
 

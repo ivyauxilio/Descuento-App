@@ -29,6 +29,11 @@ class User extends Authenticatable
         'role',
         'status',
         'remember_token',
+        'referral_code',
+        'referred_by',
+        'referred_at',
+        'total_referrals',
+        'total_referral_earnings',
     ];
 
     /**
@@ -51,6 +56,8 @@ class User extends Authenticatable
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'referred_at' => 'datetime',
+        'total_referral_earnings' => 'decimal:2',
     ];
 
     /**
@@ -64,6 +71,33 @@ class User extends Authenticatable
         'deleted_at',
         'email_verified_at',
     ];
+
+    
+    public function wallet()
+    {
+        return $this->hasOne(CustomerWallet::class, 'user_id');
+    }
+
+    public function referrer()
+    {
+        return $this->belongsTo(User::class, 'referred_by');
+    }
+
+    public function referralsMade()
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    public function referralReceived()
+    {
+        return $this->hasOne(Referral::class, 'referee_id');
+    }
+
+    public function walletTransactions()
+    {
+        return $this->hasMany(CustomerWalletTransaction::class, 'user_id');
+    }
+
 
     /**
      * Get the user's full name.
@@ -293,6 +327,68 @@ class User extends Authenticatable
         });
     }
 
+        /**
+     * Generate a unique referral code (e.g., MARIA1A2B)
+     */
+    public static function generateUniqueReferralCode(?User $user = null): string
+    {
+        $prefix = 'USER';
+        if ($user && !empty($user->firstname)) {
+            $prefix = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $user->firstname), 0, 6));
+            if (strlen($prefix) < 3) {
+                $prefix = 'USER';
+            }
+        }
+
+        do {
+            $code = $prefix . strtoupper(Str::random(4));
+        } while (static::where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+        /**
+     * Get the referral URL
+     */
+    public function getReferralUrlAttribute(): string
+    {
+        return url('/ref/' . $this->referral_code);
+    }
+
+    /**
+     * Ensure user has a wallet
+     */
+    public function getOrCreateWallet(): CustomerWallet
+    {
+        return CustomerWallet::firstOrCreate(
+            ['user_id' => $this->id],
+            [
+                'balance' => 0,
+                'pending_balance' => 0,
+                'total_earned' => 0,
+                'total_withdrawn' => 0,
+            ]
+        );
+    }
+
+    /**
+     * Get referral stats
+     */
+    public function getReferralStatsAttribute(): array
+    {
+        return [
+            'total_referrals' => $this->referralsMade()->count(),
+            'pending' => $this->referralsMade()->where('status', 'pending')->count(),
+            'qualified' => $this->referralsMade()->where('status', 'qualified')->count(),
+            'approved' => $this->referralsMade()->where('status', 'approved')->count(),
+            'rejected' => $this->referralsMade()->where('status', 'rejected')->count(),
+            'total_earnings' => $this->referralsMade()
+                ->where('status', 'approved')
+                ->sum('reward_amount'),
+        ];
+    }
+
+
     /**
      * Boot the model.
      */
@@ -304,6 +400,9 @@ class User extends Authenticatable
         static::creating(function ($user) {
             if (empty($user->uuid)) {
                 $user->uuid = Str::uuid();
+            }
+            if (empty($user->referral_code)) {
+                $user->referral_code = static::generateUniqueReferralCode($user);
             }
         });
     }

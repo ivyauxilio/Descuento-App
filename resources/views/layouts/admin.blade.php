@@ -888,7 +888,8 @@
                         <h4> {{ config('app.name') }} </h4> <small> Admin Panel </small>
                     </div>
                 </div>
-            </div> {{-- Navigation --}} <div class="sidebar-nav"> @php
+            </div> {{-- Navigation --}}
+            <div class="sidebar-nav"> @php
                 $navItems = [
                     [
                         'section' => 'Overview',
@@ -918,6 +919,33 @@
                         ],
                     ],
                     [
+                        'section' => 'Referral Program',
+                        'items' => [
+                            [
+                                'route' => 'admin.referrals.index',
+                                'icon' => 'fa-user-plus',
+                                'label' => 'Referrals',
+                                'referral_badge' => true, // shows count of pending approvals
+                            ],
+                            [
+                                'route' => 'admin.referrals.transactions',
+                                'icon' => 'fa-list-check',
+                                'label' => 'Points Generated',
+                            ],
+                        ],
+                    ],
+                    [
+                        'section' => 'Communications',
+                        'items' => [
+                            [
+                                'route' => 'admin.broadcasts.index',
+                                'icon' => 'fa-bullhorn',
+                                'label' => 'Broadcast Notifications',
+                                'broadcast_badge' => true,
+                            ],
+                        ],
+                    ],
+                    [
                         'section' => 'Settings',
                         'items' => [
                             [
@@ -926,6 +954,11 @@
                                 'label' => 'Payment Gateways',
                             ],
                             ['route' => 'admin.settings.credits', 'icon' => 'fa-coins', 'label' => 'Credit Settings'],
+                            [
+                                'route' => 'admin.settings.referral',
+                                'icon' => 'fa-gift',
+                                'label' => 'Referral Settings',
+                            ],
                         ],
                     ],
                 ];
@@ -935,12 +968,11 @@
                         @foreach ($section['items'] as $item)
                             @php
                                 $routeName = $item['route'];
-                                /* * Convert: * admin.plans.index * * Into: * admin.plans.* */ $routePattern = str_replace(
-                                    '.index',
-                                    '.*',
-                                    $routeName,
-                                );
-                                $isActive = request()->routeIs($routePattern);
+
+                                $activeRoutes = $item['active_routes'] ?? [$routeName];
+
+                                $isActive = request()->routeIs($activeRoutes);
+
                             @endphp <li class="nav-item"> <a href="{{ route($routeName) }}"
                                     class="nav-link {{ $isActive ? 'active' : '' }}"> <i
                                         class="fas {{ $item['icon'] }}"></i> <span> {{ $item['label'] }} </span>
@@ -949,7 +981,17 @@
                                             <span class="sidebar-badge"> {{ $lowStockCount }} </span>
                                         @endif
                                     @endif
-                                </a> </li>
+                                    @if (!empty($item['broadcast_badge']) && isset($recentBroadcastCount) && $recentBroadcastCount > 0)
+                                        <span class="sidebar-badge">{{ $recentBroadcastCount }}</span>
+                                    @endif
+
+                                    @if (!empty($item['referral_badge']) && isset($pendingReferralCount))
+                                        @if ($pendingReferralCount > 0)
+                                            <span class="sidebar-badge">{{ $pendingReferralCount }}</span>
+                                        @endif
+                                    @endif
+                                </a>
+                            </li>
                         @endforeach
                     </ul>
                 @endforeach

@@ -4,15 +4,24 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\PhysicalCard;
+use App\Services\ReferralService;
 use App\Models\QrCodeUsage;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Services\NotificationService;
+// use App\Services\PurchaseService;
 
 class CardController extends Controller
 {
+    protected ReferralService $referrals;
+
+    public function __construct(ReferralService $referrals)
+    {
+        $this->referrals = $referrals;
+    }    
     /**
      * Get all cards for the authenticated user.
      */
@@ -109,9 +118,12 @@ class CardController extends Controller
             $card->save();
 
             // Create welcome bonus if any
-            $this->addWelcomeBonus($card);
+            $referral = $this->referrals->qualifyFromCardActivation($card);
+            // $this->addWelcomeBonus($card);
 
             DB::commit();
+
+            app(NotificationService::class)->cardActivated($user);
 
             return response()->json([
                 'success' => true,
@@ -126,6 +138,18 @@ class CardController extends Controller
                 ],
                 'message' => 'Card activated successfully! Welcome to Disquento! 🎉',
             ]);
+
+
+            // if ($referral) {
+            //     $response['referral'] = [
+            //         'qualified' => true,
+            //         'status' => $referral->status,
+            //         'note' => $referral->status === 'approved'
+            //             ? "Your referrer's ₱{$referral->reward_amount} reward has been credited!"
+            //             : "Referral qualified! Waiting for admin approval.",
+            //     ];
+            // }
+
 
         } catch (\Exception $e) {
             DB::rollBack();
