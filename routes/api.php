@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Merchant\MenuItemController;
-use App\Http\Controllers\Merchant\PromotionController;
+use App\Http\Controllers\Merchant\PromotionController as MerchantPromotionController;
 use App\Http\Controllers\Merchant\QRCodeController;
 use App\Http\Controllers\Merchant\MerchantController;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +16,7 @@ use App\Http\Controllers\Merchant\PlanController;
 use App\Http\Controllers\Api\ReferralApiController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProductController as ClientProductController;
+use App\Http\Controllers\Api\OrderController as ClientOrderController; 
 // use App\Http\Controllers\Api\NotificationController as MerchantNotificationController;
 
 
@@ -69,16 +70,16 @@ Route::middleware('auth:api')->group(function () {
         Route::put('menu-items/{menu_item}/status', [MenuItemController::class, 'updateStatus']);
 
         // Promotions
-        Route::get('promotions', [PromotionController::class, 'index']);
-        Route::post('promotions', [PromotionController::class, 'store']);
-        Route::get('promotions/{promotion}', [PromotionController::class, 'show']);
-        Route::put('promotions/{promotion}', [PromotionController::class, 'update']);
-        Route::delete('promotions/{promotion}', [PromotionController::class, 'destroy']);
-        Route::put('promotions/{promotion}/status', [PromotionController::class, 'updateStatus']);
-        Route::delete('promotions/{promotion}/poster', [PromotionController::class, 'deletePoster'])->name('promotions.delete-poster');
+        Route::get('promotions', [MerchantPromotionController::class, 'index']);
+        Route::post('promotions', [MerchantPromotionController::class, 'store']);
+        Route::get('promotions/{promotion}', [MerchantPromotionController::class, 'show']);
+        Route::put('promotions/{promotion}', [MerchantPromotionController::class, 'update']);
+        Route::delete('promotions/{promotion}', [MerchantPromotionController::class, 'destroy']);
+        Route::put('promotions/{promotion}/status', [MerchantPromotionController::class, 'updateStatus']);
+        Route::delete('promotions/{promotion}/poster', [MerchantPromotionController::class, 'deletePoster'])->name('promotions.delete-poster');
         Route::post('/promotions/redeem', [QRScanController::class, 'redeem']);
 
-        Route::post('/promotions/check-credits', [PromotionController::class, 'checkCredits']);
+        Route::post('/promotions/check-credits', [MerchantPromotionController::class, 'checkCredits']);
         // Route::post('/scan/redeem', [QRScanController::class, 'redeem']);
 
         // QR Code routes
@@ -162,24 +163,25 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/cards/{id}/balance', [CardController::class, 'getBalance']);
         Route::get('/cards/{id}/transactions', [CardController::class, 'getTransactions']);
 
-        Route::get('/orders', [OrderController::class, 'customerOrders']);
-        Route::get('/orders/{orderId}', [OrderController::class, 'customerOrderDetail']);
-        Route::post('/orders', [OrderController::class, 'store']); // Create order from client app
+        // Route::get('/orders', [OrderController::class, 'customerOrders']);
+        // Route::get('/orders/{orderId}', [OrderController::class, 'customerOrderDetail']);
+        // Route::post('/orders', [OrderController::class, 'store']); // Create order from client app
+
+        Route::get('/orders', [ClientOrderController::class, 'index']);
+        Route::post('/orders', [ClientOrderController::class, 'store']);
+        Route::get('/orders/{id}', [ClientOrderController::class, 'show']);
+        Route::post('/orders/{id}/cancel', [ClientOrderController::class, 'cancel']);
     });
 
     Route::prefix('products')->group(function () {
         // List + filters
         Route::get('/', [ClientProductController::class, 'index']);
-
         // Categories for filter chips
         Route::get('/categories', [ClientProductController::class, 'categories']);
-
         // Featured for home carousel
         Route::get('/featured', [ClientProductController::class, 'featured']);
-
         // Search (autocomplete)
         Route::get('/search', [ClientProductController::class, 'search']);
-
         // Single product — MUST be last (wildcard)
         Route::get('/{id}', [ClientProductController::class, 'show']);
     });
@@ -193,11 +195,15 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/{id}', [NotificationController::class, 'destroy']);
         Route::delete('/', [NotificationController::class, 'clearAll']);
     });
+
+
+
+    Route::post('/promotions/validate', [ClientPromotionController::class, 'validate']);
 });
 
 
 Route::middleware(['auth:sanctum', 'merchant'])->prefix('merchant')->group(function () {
 
-
+// Route::middleware('auth:sanctum')->post('/promotions/validate', [PromotionController::class, 'validate']);
 
 });

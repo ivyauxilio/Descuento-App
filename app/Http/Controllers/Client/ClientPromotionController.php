@@ -88,4 +88,70 @@ class ClientPromotionController extends Controller
             'message' => 'Promotion retrieved successfully',
         ]);
     }
+
+    public function validate(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string',
+            'subtotal' => 'required|numeric|min:0',
+        ]);
+
+        $promotion = Promotion::where('code', $request->code)
+            ->where('status', 'active')
+            ->where('start_date', '<=', now())
+            ->where(function ($q) {
+                $q->where('end_date', '>=', now())
+                ->orWhereNull('end_date');
+            })
+            ->first();
+
+        if (!$promotion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired promo code.',
+            ], 422);
+        }
+
+        $subtotal = (float) $request->subtotal;
+
+        // Min order check
+        if ($promotion->min_order_amount && $subtotal < $promotion->min_order_amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Minimum order of ₱' . number_format($promotion->min_order_amount, 2) . ' required.',
+            ], 422);
+        }
+
+        // Usage limit
+        if ($promotion->usage_limit && $promotion->used_count >= $promotion->usage_limit) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This promo has reached its usage limit.',
+            ], 422);
+        }
+
+        // Calculate discount
+        $discount = 0;
+        if ($promotion->promo_type === 'percentage') {
+            $discount = $subtotal * ($promotion->value / 100);
+            if ($promotion->max_discount_amount) {
+                $discount = min($discount, (float) $promotion->max_discount_amount);
+            }
+        } elseif ($promotion->promo_type === 'fixed') {
+            $discount = min((float) $promotion->value, $subtotal);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'promotion_id' => $promotion->promotion_id,
+                'code' => $promotion->code,
+                'title' => $promotion->title,
+                'type' => $promotion->promo_type,
+                'value' => $promotion->value,
+                'discount' => round($discount, 2),
+            ],
+            'message' => 'Promo applied! You save ₱' . number_format($discount, 2),
+        ]);
+    }
 }

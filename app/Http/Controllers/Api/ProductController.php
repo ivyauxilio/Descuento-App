@@ -514,6 +514,7 @@ class ProductController extends Controller
                 $discountedPrice = $price - ($price * $activeDiscount->value / 100);
                 $discountPercentage = (float) $activeDiscount->value;
                 $discountLabel = "{$activeDiscount->value}% OFF";
+                // $discountLabel = number_format($activeDiscount->value, 0) . '% OFF';
             } elseif ($activeDiscount->type === 'fixed') {
                 $discountedPrice = max(0, $price - (float) $activeDiscount->value);
                 $discountLabel = "₱{$activeDiscount->value} OFF";
